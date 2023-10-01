@@ -9,7 +9,7 @@
                     <div class="user-slide">
                         <div class="intr">
                             <div class="imgs">
-                                <img :src="getImageUrl('+ c_pic +')" class="btn-my" alt="" />
+                                <img :src="c_pic" class="btn-my" alt="" />
                             </div>
                             <div class="txts">
                                 <p class="txt-name btn-my">昵称：{{ c_name }}</p>
@@ -41,7 +41,7 @@
                         <div class="txt">二维码</div>
                         <div class="mess">二维码</div>
                     </li>
-                    <li>
+                    <li class="btn-code-sp" @click="showSpQrCode">
                         <div class="ico">
                             <span class="iconfont icon-zhuanshu"></span>
                         </div>
@@ -109,7 +109,13 @@
                             <span class="iconfont icon-shezhi"></span>
                         </div>
                         <div class="txt">设置</div>
-                        <div class="mess">设置</div>
+                        <!-- <div class="mess">设置</div> -->
+                        <div class="btnMore">
+                            <ul>
+                                <li @click="renewalClick">卡密续费</li>
+                                <li @click="logout">退出登陆</li>
+                            </ul>
+                        </div>
                     </li>
                 </ul>
             </div>
@@ -126,20 +132,25 @@
                     <button class="btn-color5" @click="delSessionFunc(1)">删除3天前</button>
                     <button class="btn-color6" @click="delSessionFunc(2)">删除5天前</button>
                 </div>
-                <div class="rows">
+                <div class="rows btn-flex-start">
                     <button class="btn-color7">全部接待</button>
                     <button class="btn-color8">未读消息</button>
                     <!-- <button class="btn-color9">功能键1</button> -->
                 </div>
             </div>
             <div class="userCont" @scroll="userHandlerScroll($event)" id="userlist_scroll">
-                <div class="rightMenu" v-if="isShowRightMenu" :style="{ left: showRightMenuPos.x + 'px', top: showRightMenuPos.y + 'px' }">
+                <div
+                    ref="rightMenuRef"
+                    class="rightMenu"
+                    v-if="isShowRightMenu"
+                    :style="{ left: showRightMenuPos.x + 'px', top: showRightMenuPos.y + 'px' }"
+                >
                     <ul>
                         <li @click="setTopFunc"><a href="javascript:;" class="menu_a">置顶</a></li>
                         <li @click="setUnTopFunc"><a href="javascript:;" class="menu_a">取消置顶</a></li>
                         <li @click="setNoteFunc"><a href="javascript:;" class="menu_a">修改备注</a></li>
-                        <li @click="!isGroupValue ? addBlackFunc() : editGroup()">
-                            <a href="javascript:;" class="menu_a">{{ !isGroupValue ? '加入黑名单' : '修改信息' }}</a>
+                        <li @click="!isRightGroupValue ? addBlackFunc() : editGroup()">
+                            <a href="javascript:;" class="menu_a">{{ !isRightGroupValue ? '加入黑名单' : '修改信息' }}</a>
                         </li>
                         <li v-if="rightMenuUserModel.c_type === 1" @click="delGroupFunc"><a href="javascript:;" class="menu_a">解散群聊</a></li>
                         <li @click="delChatFunc"><a href="javascript:;" class="menu_a">清空聊天记录</a></li>
@@ -149,14 +160,18 @@
                 <div class="userTabs dialogue show">
                     <ul id="session_users">
                         <li
-                            :class="{ online: item.c_online == true, 'off-line': item.c_online == false, active: selectUser.c_identity == item.c_identity }"
+                            :class="{
+                                online: item.c_online == true,
+                                'off-line': item.c_online == false,
+                                active: selectUser.c_identity == item.c_identity,
+                            }"
                             v-for="(item, index) in sessList.list"
                             :key="index"
                             @click="userClickHandler(item)"
                             @contextmenu.prevent="priChatRightClick($event, item)"
                         >
                             <!-- selectUser.c_identity == item.c_identity ? 'active' : ''    [(item.c_online == 1 ? 'online' : 'off-line') ] -->
-                            <i class="btn-close"></i>
+                            <i class="btn-close" @click="delSessionDirect(0, item.c_identity)"></i>
                             <div class="imgs fl">
                                 <img :src="item.c_pic" alt="" />
                                 <div class="mess" v-if="item.c_read > 0">{{ item.c_read }}</div>
@@ -171,7 +186,7 @@
                                             <span style="color: blue; font-weight: bold" v-if="item.c_note">-</span>
                                             <span> {{ item.c_nick }}</span>
                                         </div>
-                                        <i>{{ item.c_type == 0 ? '私聊' : '群组' }}</i>
+                                        <i :style="{ 'background-color': typeBgColor(item.c_type) }">{{ item.c_type == 0 ? '私聊' : '群组' }}</i>
                                     </div>
                                     <div class="txts">{{ getMsgType(item.lastmsg) == 'text' ? item.lastmsg : getMsgType(item.lastmsg) }}</div>
                                 </div>
@@ -180,7 +195,7 @@
                         </li>
                     </ul>
                 </div>
-                <div class="userTabs userIntr">
+                <!-- <div class="userTabs userIntr">
                     <ul id="all_users">
                         <li class="online acti">
                             <i class="btn-close"></i>
@@ -327,7 +342,7 @@
                             </div>
                         </li>
                     </ul>
-                </div>
+                </div> -->
             </div>
         </div>
         <div class="containers-fr fr">
@@ -336,7 +351,7 @@
                     <div class="image">
                         <img src="../assets/img/967f82_118x88.png" alt="" />
                     </div>
-                    <div class="txts">您好！欢迎您访问金弘客服系统</div>
+                    <div class="txts">您好！欢迎您访问{{ title }}</div>
                 </div>
             </div>
             <div class="content-chat">
@@ -365,13 +380,16 @@
                                         <img :src="item2.imgUrl" alt="" />
                                     </div>
                                     <div class="text" v-if="getMsgType(item2.msg) == '图片' || getMsgType(item2.msg) == '表情'">
-                                        <div v-viewer v-html="convertChatMsg(item2.msg)"></div>
+                                        <div v-viewer v-html="convertChatMsg(item2.msg, kefuState.face_url)"></div>
                                     </div>
                                     <div class="text" v-else-if="getMsgType(item2.msg) == '文件'">
                                         <pre v-html="convertChatMsg(item2.msg)"></pre>
                                     </div>
+                                    <div class="text" v-else-if="getMsgType(item2.msg) == '语音'">
+                                        <div v-html="convertChatMsg(item2.msg)"></div>
+                                    </div>
                                     <div class="text" v-else>
-                                        <pre>{{ item2.msg }}</pre>
+                                        <pre v-html="item2.msg"></pre>
                                     </div>
                                 </div>
                             </div>
@@ -386,292 +404,292 @@
                                         <div class="bq-conts scrollbar">
                                             <ul>
                                                 <li>
-                                                    <img src="../assets/img/bq/weixiao.gif" alt="" />
+                                                    <img src="../assets/img/bq/weixiao.gif" data-src="weixiao" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/xiaojiujie.gif" alt="" />
+                                                    <img src="../assets/img/bq/xiaojiujie.gif" data-src="xiaojiujie" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/deyi.gif" alt="" />
+                                                    <img src="../assets/img/bq/deyi.gif" data-src="deyi" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/aoman.gif" alt="" />
+                                                    <img src="../assets/img/bq/aoman.gif" data-src="aoman" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/baiyan.gif" alt="" />
+                                                    <img src="../assets/img/bq/baiyan.gif" data-src="baiyan" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/bishi.gif" alt="" />
+                                                    <img src="../assets/img/bq/bishi.gif" data-src="bishi" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/bizui.gif" alt="" />
+                                                    <img src="../assets/img/bq/bizui.gif" data-src="bizui" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/ciya.gif" alt="" />
+                                                    <img src="../assets/img/bq/ciya.gif" data-src="ciya" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/dabing.gif" alt="" />
+                                                    <img src="../assets/img/bq/dabing.gif" data-src="dabing" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/doge.gif" alt="" />
+                                                    <img src="../assets/img/bq/doge.gif" data-src="doge" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/fadai.gif" alt="" />
+                                                    <img src="../assets/img/bq/fadai.gif" data-src="fadai" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/fanu.gif" alt="" />
+                                                    <img src="../assets/img/bq/fanu.gif" data-src="fanu" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/haixiu.gif" alt="" />
+                                                    <img src="../assets/img/bq/haixiu.gif" data-src="haixiu" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/touxiao.gif" alt="" />
+                                                    <img src="../assets/img/bq/touxiao.gif" data-src="touxiao" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/lenghan.gif" alt="" />
+                                                    <img src="../assets/img/bq/lenghan.gif" data-src="lenghan" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/liulei.gif" alt="" />
+                                                    <img src="../assets/img/bq/liulei.gif" data-src="liulei" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/huaixiao.gif" alt="" />
+                                                    <img src="../assets/img/bq/huaixiao.gif" data-src="huaixiao" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/jie.gif" alt="" />
+                                                    <img src="../assets/img/bq/jie.gif" data-src="jie" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/jingxi.gif" alt="" />
+                                                    <img src="../assets/img/bq/jingxi.gif" data-src="jingxi" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/jingya.gif" alt="" />
+                                                    <img src="../assets/img/bq/jingya.gif" data-src="jingya" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/keai.gif" alt="" />
+                                                    <img src="../assets/img/bq/keai.gif" data-src="keai" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/kelian.gif" alt="" />
+                                                    <img src="../assets/img/bq/kelian.gif" data-src="kelian" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/koubi.gif" alt="" />
+                                                    <img src="../assets/img/bq/koubi.gif" data-src="koubi" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/ku.gif" alt="" />
-                                                </li>
-
-                                                <li>
-                                                    <img src="../assets/img/bq/kun.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/leiben.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/liuhan.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/nanguo.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/haqian.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/saorao.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/tuosai.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/wunai.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/qinqin.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/qiudale.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/wozuimei.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/xia.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/xiaoku.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/zhouma.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/zhayanjian.gif" alt="" />
+                                                    <img src="../assets/img/bq/ku.gif" data-src="ku" alt="" />
                                                 </li>
 
                                                 <li>
-                                                    <img src="../assets/img/bq/zaijian.gif" alt="" />
+                                                    <img src="../assets/img/bq/kun.gif" data-src="kun" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/zuohengheng.gif" alt="" />
+                                                    <img src="../assets/img/bq/leiben.gif" data-src="leiben" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/shui.gif" alt="" />
+                                                    <img src="../assets/img/bq/liuhan.gif" data-src="liuhan" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/zhuakuang.gif" alt="" />
+                                                    <img src="../assets/img/bq/nanguo.gif" data-src="nanguo" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/tiaopi.gif" alt="" />
+                                                    <img src="../assets/img/bq/haqian.gif" data-src="haqian" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/zhemo.gif" alt="" />
+                                                    <img src="../assets/img/bq/saorao.gif" data-src="saorao" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/yun.gif" alt="" />
+                                                    <img src="../assets/img/bq/tuosai.gif" data-src="tuosai" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/xieyanxiao.gif" alt="" />
+                                                    <img src="../assets/img/bq/wunai.gif" data-src="wunai" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/kuaikule.gif" alt="" />
+                                                    <img src="../assets/img/bq/qinqin.gif" data-src="qinqin" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/cahan.gif" alt="" />
+                                                    <img src="../assets/img/bq/qiudale.gif" data-src="qiudale" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/weiqu.gif" alt="" />
+                                                    <img src="../assets/img/bq/wozuimei.gif" data-src="wozuimei" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/shui.gif" alt="" />
+                                                    <img src="../assets/img/bq/xia.gif" data-src="xia" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/tu.gif" alt="" />
-                                                </li>
-
-                                                <li>
-                                                    <img src="../assets/img/bq/zhayanjian.gif" alt="" />
-                                                </li>
-
-                                                <li>
-                                                    <img src="../assets/img/bq/piezui.gif" alt="" />
+                                                    <img src="../assets/img/bq/xiaoku.gif" data-src="xiaoku" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/penxue.gif" alt="" />
+                                                    <img src="../assets/img/bq/zhouma.gif" data-src="zhouma" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/yiwen.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/xu.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/yinxian.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/youhengheng.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/daku.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/guzhang.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/hanxiao.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/se.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/fendou.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/qiaoda.gif" alt="" />
-                                                </li>
-                                                <li>
-                                                    <img src="../assets/img/bq/ganga.gif" alt="" />
+                                                    <img src="../assets/img/bq/zhayanjian.gif" data-src="zhayanjian" alt="" />
                                                 </li>
 
                                                 <li>
-                                                    <img src="../assets/img/bq/haobang.gif" alt="" />
+                                                    <img src="../assets/img/bq/zaijian.gif" data-src="zaijian" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/chi.gif" alt="" />
+                                                    <img src="../assets/img/bq/zuohengheng.gif" data-src="zuohengheng" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/kulou.gif" alt="" />
+                                                    <img src="../assets/img/bq/shui.gif" data-src="shui" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/jingkong.gif" alt="" />
+                                                    <img src="../assets/img/bq/zhuakuang.gif" data-src="zhuakuang" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/aixin.gif" alt="" />
+                                                    <img src="../assets/img/bq/tiaopi.gif" data-src="tiaopi" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/pijiu.gif" alt="" />
+                                                    <img src="../assets/img/bq/zhemo.gif" data-src="zhemo" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/xiaoyanger.gif" alt="" />
+                                                    <img src="../assets/img/bq/yun.gif" data-src="yun" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/shuai.gif" alt="" />
+                                                    <img src="../assets/img/bq/xieyanxiao.gif" data-src="xieyanxiao" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/shouqiang.gif" alt="" />
+                                                    <img src="../assets/img/bq/kuaikule.gif" data-src="kuaikule" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/xigua.gif" alt="" />
+                                                    <img src="../assets/img/bq/cahan.gif" data-src="cahan" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/yangtuo.gif" alt="" />
+                                                    <img src="../assets/img/bq/weiqu.gif" data-src="weiqu" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/youling.gif" alt="" />
+                                                    <img src="../assets/img/bq/shui.gif" data-src="shui" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/bangbangtang.gif" alt="" />
+                                                    <img src="../assets/img/bq/tu.gif" data-src="tu" alt="" />
                                                 </li>
 
                                                 <li>
-                                                    <img src="../assets/img/bq/lanqiu.gif" alt="" />
+                                                    <img src="../assets/img/bq/zhayanjian.gif" data-src="zhayanjian" alt="" />
+                                                </li>
+
+                                                <li>
+                                                    <img src="../assets/img/bq/piezui.gif" data-src="piezui" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/juhua.gif" alt="" />
+                                                    <img src="../assets/img/bq/penxue.gif" data-src="penxue" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/hexie.gif" alt="" />
+                                                    <img src="../assets/img/bq/yiwen.gif" data-src="yiwen" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/hecai.gif" alt="" />
+                                                    <img src="../assets/img/bq/xu.gif" data-src="xu" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/gouyin.gif" alt="" />
+                                                    <img src="../assets/img/bq/yinxian.gif" data-src="yinxian" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/dan.gif" alt="" />
+                                                    <img src="../assets/img/bq/youhengheng.gif" data-src="youhengheng" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/caidao.gif" alt="" />
+                                                    <img src="../assets/img/bq/daku.gif" data-src="daku" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/baojin.gif" alt="" />
+                                                    <img src="../assets/img/bq/guzhang.gif" data-src="guzhang" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/baoquan.gif" alt="" />
+                                                    <img src="../assets/img/bq/hanxiao.gif" data-src="hanxiao" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/aini.gif" alt="" />
+                                                    <img src="../assets/img/bq/se.gif" data-src="se" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/qiang.gif" alt="" />
+                                                    <img src="../assets/img/bq/fendou.gif" data-src="fendou" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/OK.gif" alt="" />
+                                                    <img src="../assets/img/bq/qiaoda.gif" data-src="qiaoda" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/quantou.gif" alt="" />
+                                                    <img src="../assets/img/bq/ganga.gif" data-src="ganga" alt="" />
+                                                </li>
+
+                                                <li>
+                                                    <img src="../assets/img/bq/haobang.gif" data-src="haobang" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/shengli.gif" alt="" />
+                                                    <img src="../assets/img/bq/chi.gif" data-src="chi" alt="" />
                                                 </li>
                                                 <li>
-                                                    <img src="../assets/img/bq/woshou.gif" alt="" />
+                                                    <img src="../assets/img/bq/kulou.gif" data-src="kulou" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/jingkong.gif" data-src="jingkong" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/aixin.gif" data-src="aixin" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/pijiu.gif" data-src="pijiu" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/xiaoyanger.gif" data-src="xiaoyanger" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/shuai.gif" data-src="shuai" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/shouqiang.gif" data-src="shouqiang" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/xigua.gif" data-src="xigua" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/yangtuo.gif" data-src="yangtuo" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/youling.gif" data-src="youling" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/bangbangtang.gif" data-src="bangbangtang" alt="" />
+                                                </li>
+
+                                                <li>
+                                                    <img src="../assets/img/bq/lanqiu.gif" data-src="lanqiu" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/juhua.gif" data-src="juhua" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/hexie.gif" data-src="hexie" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/hecai.gif" data-src="hecai" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/gouyin.gif" data-src="gouyin" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/dan.gif" data-src="dan" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/caidao.gif" data-src="caidao" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/baojin.gif" data-src="baojin" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/baoquan.gif" data-src="baoquan" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/aini.gif" data-src="aini" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/qiang.gif" data-src="qiang" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/OK.gif" data-src="OK" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/quantou.gif" data-src="quantou" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/shengli.gif" data-src="shengli" alt="" />
+                                                </li>
+                                                <li>
+                                                    <img src="../assets/img/bq/woshou.gif" data-src="woshou" alt="" />
                                                 </li>
                                             </ul>
                                         </div>
@@ -680,6 +698,11 @@
                                 <div class="box fl box-picture" id="select_send_img" @click="msgUploadClick">
                                     <i class="btn-picture"></i>
                                     <input type="file" ref="msgFileRef" style="display: none" @change="msgFileChange" />
+                                </div>
+                                <div class="box fl" @click="audioUploadClick">
+                                    <!-- <el-icon :size="25"><Microphone /></el-icon> -->
+                                    <i class="btn-microphone"></i>
+                                    <input type="file" ref="msgAudioRef" style="display: none" @change="msgAudioChange" />
                                 </div>
                                 <div class="box fl" v-if="false">
                                     <i class="btn-mess"></i>
@@ -690,7 +713,7 @@
                                         <p>我们这边后台已经在处理中，情稍微等待一下</p>
                                     </div>
                                 </div>
-                                <div class="box fl" @click="groupQrCodeClick" v-if="isGroupValue">
+                                <div class="box fl" @click="groupQrCodeClick" v-if="isSelectGroupValue">
                                     <i class="btn-conver"></i>
                                 </div>
                             </div>
@@ -711,13 +734,13 @@
                             </div>
                             <div class="text fl">
                                 <span>{{ selectUser.c_nick }}</span>
-                                <i>PC端</i>
+                                <i :style="{ 'background-color': typeBgColor(selectUser.c_type) }">{{ selectUser.c_type == 0 ? '私聊' : '群组' }}</i>
                             </div>
                         </div>
-                        <div class="intrs" v-if="!isGroupValue">
+                        <div class="intrs" v-if="!isSelectGroupValue">
                             <div class="rows">
                                 <div class="labs fl">MID</div>
-                                <div class="txts fl" id="cur_balance">{{ selectUser.c_identity }}</div>
+                                <div class="txts fl auto-warp" id="cur_balance">{{ selectUser.c_identity }}</div>
                             </div>
                             <div class="rows">
                                 <div class="labs fl">昵称</div>
@@ -748,21 +771,23 @@
                             <div class="rows">
                                 <div class="labs fl">群禁言</div>
                                 <div class="txts fl" id="cur_balance">
+                                    <!--    :active-value="true"
+                                        :inactive-value="false"  -->
                                     <el-switch @change="groupBannedSwitch" v-model="bannedState"></el-switch>
                                 </div>
                             </div>
                             <div class="rows">
                                 <div class="labs fl">群人数</div>
-                                <div class="txts fl" id="cur_consumption"></div>
+                                <div class="txts fl" id="cur_consumption">{{ selectUser.c_number }}/{{ selectUser.c_ceiling }}</div>
                             </div>
                             <div class="rows">
                                 <div class="labs fl">群公告</div>
-                                <div class="txts fl" id="cur_online">{{ selectUser.c_ip }}</div>
+                                <div class="txts fl" id="cur_online">{{ selectUser.c_annou }}</div>
                             </div>
 
                             <div class="rows">
                                 <div class="button">
-                                    <button @click="editGroup">编辑信息</button>
+                                    <button @click="editGroup(100)">编辑信息</button>
                                     <button @click="openGroupMemberListBtnCLick">查看群成员</button>
                                 </div>
                             </div>
@@ -773,8 +798,17 @@
                                 <button class="btn-adds"></button>
                             </div>
                             <div class="list">
-                                <ul>
-                                    <li v-for="item in fastList" :key="item.id" @click="fastItemClick(item)">{{ item.c_cont }}</li>
+                                <ul class="clearfix">
+                                    <li v-for="item in fastList" :key="item.id" @click="fastItemClick(item)">
+                                        <div v-if="item.c_type == 0">{{ item.c_cont }}</div>
+                                        <div v-else-if="item.c_type == 1">
+                                            <img :src="item.c_cont" style="width: 200px" />
+                                        </div>
+                                        <div v-else-if="item.c_type == 2">
+                                            <!-- <div>录音</div> -->
+                                            <audio :src="item.c_cont" style="height: 38px; width: 50%" controls />
+                                        </div>
+                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -792,11 +826,34 @@
             <div class="conts">
                 <div class="links">访客链接：{{ QrState.url }}</div>
                 <div class="imgs">
-                    <img :src="QrCodeImg" alt="" />
+                    <qrcode-vue :value="QrState.url" :size="300" level="H"></qrcode-vue>
                 </div>
                 <div class="button">
-                    <button @click="setSessCodeFunc(0)">失效当前二维码</button>
-                    <button @click="setSessCodeFunc(0)">重新生成二维码</button>
+                    <button @click="setSessCodeFunc(0, '')">失效当前二维码</button>
+                    <button @click="setSessCodeFunc(0, '')">重新生成二维码</button>
+                </div>
+                <div class="text">
+                    <p>
+                        【失效当前二维码】：会失效二维码的【过期值】，导致之前依然能正常使用的二维码也全部失效。【请谨慎操作该种方式生成二维码！！！】
+                    </p>
+                    <p>【重新生成二维码】：不会失效二维码的【过期值】，不会影响之前能正常使用的二维码。【推荐使用该种方式生成二维码】</p>
+                    <p>
+                        两种方式都会根据最新配置的二维码域名生成新二维码，请在需要重新生成二维码之前，自己扫码确认自己当前二维码是否能正常使用，若能正常使用则没必要重新生成二维码！！！
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="alert-code-sp">
+            <div class="closes"></div>
+            <div class="title">专属二维码</div>
+            <div class="conts">
+                <div class="links">访客链接：{{ QrState.url }}</div>
+                <div class="imgs">
+                    <qrcode-vue :value="QrState.url" :size="300" level="H"></qrcode-vue>
+                </div>
+                <div class="button">
+                    <button @click="setSessCodeFunc(0, true)">失效当前二维码</button>
+                    <button @click="setSessCodeFunc(0, true)">重新生成二维码</button>
                 </div>
                 <div class="text">
                     <p>
@@ -815,7 +872,7 @@
                 <i class="closes"></i>
             </div>
             <div class="conts">
-                <div class="list">
+                <div class="list" @scroll="recepSCrollHandler">
                     <ul>
                         <li v-for="item in recepList" :key="item.id">
                             <div class="imgs fl">
@@ -823,7 +880,7 @@
                             </div>
                             <div class="text fl">
                                 <span>{{ item.c_nick }}</span>
-                                <a href="#">发消息</a>
+                                <a href="#" @click="selectSendMsg(item)">发消息</a>
                             </div>
                         </li>
                     </ul>
@@ -836,9 +893,10 @@
                 <i class="closes"></i>
             </div>
             <div class="conts">
-                <div class="list">
+                <div class="list" @scroll="blackHandlerScroll">
                     <ul>
                         <li v-for="item in blackList" :key="item.id">
+                            <!-- <li v-for="item in 10" :key="item.id"> -->
                             <div class="imgs fl">
                                 <img :src="item.c_pic" alt="" />
                             </div>
@@ -860,9 +918,12 @@
                 <div class="lists">
                     <ul>
                         <li v-for="item in massList" :key="item.id">
-                            <div class="txts fl" v-if="item.c_cont">{{ item.c_cont }}</div>
-                            <div class="imgs fl" v-if="item.c_pic">
-                                <img :src="item.c_pic" alt="" />
+                            <div class="txts fl line-limit" v-if="item.c_type == 0">{{ item.c_cont }}</div>
+                            <div class="imgs fl" v-else-if="item.c_type == 1">
+                                <img :src="item.c_cont" alt="" />
+                            </div>
+                            <div class="imgs fl" v-else-if="item.c_type == 2">
+                                <audio :src="item.c_cont" controls />
                             </div>
                             <div class="func fr">
                                 <span @click="startMassFunc(item)">群发</span>
@@ -875,27 +936,12 @@
                                 </div>
                             </div>
                         </li>
-                        <!-- <li>
-              <div class="imgs fl">
-                <img src="../assets/img/4b97db_303x304.jpg" alt="" />
-              </div>
-              <div class="func fr">
-                <span>群发</span>
-                <i class="btn-more"></i>
-                <div class="btn-slide">
-                  <p>上移</p>
-                  <p>下移</p>
-                  <p class="edit-massTxt">编辑</p>
-                  <p class="btn-del">删除</p>
-                </div>
-              </div>
-            </li> -->
                     </ul>
                 </div>
                 <div class="buttons">
-                    <button class="btn-massTxt" @click="isMassAdd = true">新建文本群发</button>
-                    <button @click="imgMassClick">新建图片群发</button>
-                    <input type="file" ref="btnImgMassFile" id="btn_file" style="display: none" @change="uploadImgMass" />
+                    <button class="btn-massTxt" @click="addMassTxtClick">新建文本群发</button>
+                    <button @click="addMassImgClick">新建图片群发</button>
+                    <button @click="addMassAudioClick">新建录音群发</button>
                 </div>
             </div>
         </div>
@@ -908,12 +954,15 @@
                 <div class="lists">
                     <ul>
                         <li v-for="item in sayList" :key="item.id">
-                            <div class="txts fl" v-if="!!item.c_cont">{{ item.c_cont }}</div>
-                            <div class="imgs fl" v-else>
-                                <img src="../assets/img/4b97db_303x304.jpg" alt="" />
+                            <div class="txts fl line-limit" v-if="item.c_type == 0">{{ item.c_cont }}</div>
+                            <div class="imgs fl" v-else-if="item.c_type == 1">
+                                <img :src="item.c_cont" alt="" />
+                            </div>
+                            <div class="imgs fl" v-else-if="item.c_type == 2">
+                                <audio :src="item.c_cont" controls />
                             </div>
                             <div class="func fr">
-                                <span>开启</span>
+                                <span>{{ item.c_state == 1 ? '开启' : '关闭' }}</span>
                                 <i class="btn-more"></i>
                                 <div class="btn-slide">
                                     <p @click="sayMoveUp(item)">上移</p>
@@ -923,51 +972,13 @@
                                 </div>
                             </div>
                         </li>
-                        <!-- <li>
-              <div class="txts fl">aaa</div>
-              <div class="func fr">
-                <span>开启</span>
-                <i class="btn-more"></i>
-                <div class="btn-slide">
-                  <p>上移</p>
-                  <p>下移</p>
-                  <p class="edit-greet">编辑</p>
-                  <p class="btn-del">删除</p>
-                </div>
-              </div>
-            </li>
-            <li>
-              <div class="txts fl">aaa</div>
-              <div class="func fr">
-                <span>开启</span>
-                <i class="btn-more"></i>
-                <div class="btn-slide">
-                  <p>上移</p>
-                  <p>下移</p>
-                  <p class="edit-greet">编辑</p>
-                  <p class="btn-del">删除</p>
-                </div>
-              </div>
-            </li>
-            <li>
-              <div class="txts fl">aaa</div>
-              <div class="func fr">
-                <span>开启</span>
-                <i class="btn-more"></i>
-                <div class="btn-slide">
-                  <p>上移</p>
-                  <p>下移</p>
-                  <p class="edit-greet">编辑</p>
-                  <p class="btn-del">删除</p>
-                </div>
-              </div>
-            </li> -->
                     </ul>
                 </div>
                 <div class="buttons">
-                    <button class="btn-greetTxt" @click="isSayAdd = true">新建文本招呼</button>
+                    <button class="btn-greetTxt" @click="addSayTxtClick">新建文本招呼</button>
                     <button @click="addSayImgClick">新建图片招呼</button>
-                    <input type="file" ref="btnImgSayFile" style="display: none" @change="uploadImgSay" />
+                    <button @click="addSayAudioClick">新建录音招呼</button>
+                    <!-- <input type="file" ref="btnImgSayFile" style="display: none" @change="uploadImgSay" /> -->
                 </div>
             </div>
         </div>
@@ -983,12 +994,15 @@
                             <div class="sele fl">
                                 <input type="checkbox" name="" id="" />
                             </div>
-                            <div class="text fl" v-if="!!item.c_cont">{{ item.c_cont }}</div>
-                            <div class="text fl" v-else>
-                                <img src="../assets/img/4b97db_303x304.jpg" alt="" />
+                            <div class="text fl line-limit" v-if="item.c_type == 0">{{ item.c_cont }}</div>
+                            <div class="text fl" v-else-if="item.c_type == 1">
+                                <img :src="item.c_cont" alt="" />
+                            </div>
+                            <div class="text fl" v-else-if="item.c_type == 2">
+                                <audio :src="item.c_cont" controls />
                             </div>
                             <div class="func fr">
-                                <span>群发</span>
+                                <span></span>
                                 <i class="btn-more"></i>
                                 <div class="btn-slide">
                                     <p @click="fastMoveUp(item)">上移</p>
@@ -998,48 +1012,13 @@
                                 </div>
                             </div>
                         </li>
-                        <!-- <li>
-              <div class="sele fl">
-                <input type="checkbox" name="" id="" />
-              </div>
-              <div class="text fl">啊啊啊</div>
-              <div class="func fr">
-                <span>群发</span>
-                <i class="btn-more"></i>
-                <div class="btn-slide">
-                  <p>上移</p>
-                  <p>下移</p>
-                  <p class="edit-fastTxt">编辑</p>
-                  <p class="btn-del">删除</p>
-                </div>
-              </div>
-            </li>
-            <li>
-              <div class="sele fl">
-                <input type="checkbox" name="" id="" />
-              </div>
-              <div class="text fl">
-                <img src="../assets/img/4b97db_303x304.jpg" alt="" />
-              </div>
-              <div class="func fr">
-                <span>群发</span>
-                <i class="btn-more"></i>
-                <div class="btn-slide">
-                  <p>上移</p>
-                  <p>下移</p>
-                  <p class="edit-fastTxt">编辑</p>
-                  <p class="btn-del">删除</p>
-                </div>
-              </div>
-            </li> -->
                     </ul>
                 </div>
             </div>
-            <div class="buttons">
-                <button class="btn-fastTxt" @click="isFastAdd = true">新建文本快捷回复</button>
+            <div class="buttons btn-flex-start">
+                <button class="btn-fastTxt" @click="addFastTxtClick">新建文本快捷回复</button>
                 <button class="btn-pic" @click="addFastImgClick">新建图片快捷回复</button>
-                <input type="file" ref="btnImgFastFile" style="display: none" @change="uploadImgFast" />
-                <button class="btn-sele">批量发送选中</button>
+                <button class="btn-pic" @click="addFastAudioClick">新建录音快捷回复</button>
             </div>
         </div>
         <div class="alert-content alert-QA">
@@ -1050,138 +1029,6 @@
             <div class="conts">
                 <div class="list">
                     <ul>
-                        <!-- <li>
-                            <div class="intr fl">
-                                <div class="rows rows-q">
-                                    <i>Q1:</i>
-                                    <em>您好</em>
-                                </div>
-                                <div class="rows rows-a">
-                                    <i>A1:</i>
-                                    <em>您好</em>
-                                </div>
-                            </div>
-                            <div class="func fr">
-                                <span>开启</span>
-                                <i class="btn-more"></i>
-                                <div class="btn-slide">
-                                    <p>上移</p>
-                                    <p>下移</p>
-                                    <p class="edit-QA">编辑</p>
-                                    <p class="btn-del">删除</p>
-                                </div>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="intr fl">
-                                <div class="rows rows-q">
-                                    <i>Q2:</i>
-                                    <em>在吗</em>
-                                </div>
-                                <div class="rows rows-a">
-                                    <i>A2:</i>
-                                    <em>在的</em>
-                                </div>
-                            </div>
-                            <div class="func fr">
-                                <span>开启</span>
-                                <i class="btn-more"></i>
-                                <div class="btn-slide">
-                                    <p>上移</p>
-                                    <p>下移</p>
-                                    <p class="edit-QA">编辑</p>
-                                    <p class="btn-del">删除</p>
-                                </div>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="intr fl">
-                                <div class="rows rows-q">
-                                    <i>Q3:</i>
-                                    <em>1</em>
-                                </div>
-                                <div class="rows rows-a">
-                                    <i>A3:</i>
-                                    <em>2</em>
-                                </div>
-                            </div>
-                            <div class="func fr">
-                                <span>开启</span>
-                                <i class="btn-more"></i>
-                                <div class="btn-slide">
-                                    <p>上移</p>
-                                    <p>下移</p>
-                                    <p class="edit-QA">编辑</p>
-                                    <p class="btn-del">删除</p>
-                                </div>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="intr fl">
-                                <div class="rows rows-q">
-                                    <i>Q4:</i>
-                                    <em>3</em>
-                                </div>
-                                <div class="rows rows-a">
-                                    <i>A4:</i>
-                                    <em>4</em>
-                                </div>
-                            </div>
-                            <div class="func fr">
-                                <span>开启</span>
-                                <i class="btn-more"></i>
-                                <div class="btn-slide">
-                                    <p>上移</p>
-                                    <p>下移</p>
-                                    <p class="edit-QA">编辑</p>
-                                    <p class="btn-del">删除</p>
-                                </div>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="intr fl">
-                                <div class="rows rows-q">
-                                    <i>Q5:</i>
-                                    <em>5</em>
-                                </div>
-                                <div class="rows rows-a">
-                                    <i>A5:</i>
-                                    <em>6</em>
-                                </div>
-                            </div>
-                            <div class="func fr">
-                                <span>开启</span>
-                                <i class="btn-more"></i>
-                                <div class="btn-slide">
-                                    <p>上移</p>
-                                    <p>下移</p>
-                                    <p class="edit-QA">编辑</p>
-                                    <p class="btn-del">删除</p>
-                                </div>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="intr fl">
-                                <div class="rows rows-q">
-                                    <i>Q6:</i>
-                                    <em>7</em>
-                                </div>
-                                <div class="rows rows-a">
-                                    <i>A6:</i>
-                                    <em>8</em>
-                                </div>
-                            </div>
-                            <div class="func fr">
-                                <span>开启</span>
-                                <i class="btn-more"></i>
-                                <div class="btn-slide">
-                                    <p>上移</p>
-                                    <p>下移</p>
-                                    <p class="edit-QA">编辑</p>
-                                    <p class="btn-del">删除</p>
-                                </div>
-                            </div>
-                        </li> -->
                         <li v-for="(item, index) in quaList" :key="item.id">
                             <div class="intr fl">
                                 <div class="rows rows-q">
@@ -1190,8 +1037,9 @@
                                 </div>
                                 <div class="rows rows-a">
                                     <i>A{{ index + 1 }}:</i>
-                                    <em v-if="!!item.c_a">{{ item.c_a }}</em>
-                                    <img v-else src="../assets/img/4b97db_303x304.jpg" alt="" />
+                                    <em v-if="item.c_type == 0">{{ item.c_a }}</em>
+                                    <audio v-else-if="item.c_type == 2" :src="item.c_a" controls />
+                                    <img v-else :src="item.c_a" alt="" />
                                 </div>
                             </div>
                             <div class="func fr">
@@ -1208,7 +1056,7 @@
                     </ul>
                 </div>
                 <div class="buttons">
-                    <button class="btn-QATxt" @click="isQuaAdd = true">新建智能问答</button>
+                    <button class="btn-QATxt" @click="addNewQuaClick">新建智能问答</button>
                 </div>
             </div>
         </div>
@@ -1235,7 +1083,7 @@
                 <i class="closes"></i>
             </div>
             <div class="conts">
-                <div class="list">
+                <div class="list" @scroll="groupMemberSCrollHandler">
                     <ul>
                         <li v-for="item in groupList" :key="item.id">
                             <div class="sele fl">
@@ -1255,7 +1103,7 @@
             </div>
         </div>
 
-        <div class="alert-group-code">
+        <div class="alert-content alert-group-code">
             <div class="closes"></div>
             <div class="title">群聊二维码</div>
             <div class="conts">
@@ -1279,12 +1127,21 @@
             <div class="conts">
                 <div class="rows">
                     <div class="labs fl">消息内容</div>
-                    <div class="text fr">
-                        <textarea name="" id="" cols="0" rows="0" v-model="massModelValue"></textarea>
+                    <div class="text fr" v-if="massModelValue.type == 0">
+                        <textarea name="" id="" cols="0" rows="0" v-model="massModelValue.msg"></textarea>
+                    </div>
+                    <div class="text fr" @click="massUploadImg" v-else-if="massModelValue.type == 1">
+                        <img :src="massModelValue.msg" alt="" class="group-img" />
+                        <input type="file" ref="massImgFile" @change="massImgUpload" style="display: none" />
+                    </div>
+                    <div class="text fr" @click="massUploadAudio" v-else-if="massModelValue.type == 2">
+                        <img :src="tianjia" alt="" class="group-img" />
+                        <audio :src="massModelValue.msg" controls />
+                        <input type="file" ref="massAudioFileRef" @change="massAudioUpload" style="display: none" />
                     </div>
                 </div>
                 <div class="button">
-                    <button @click="isMassAdd ? addMassFunc(0) : editMassFunc()">确定</button>
+                    <button @click="isMassAdd ? addMassFunc(massModelValue.type) : editMassFunc()">确定</button>
                 </div>
             </div>
         </div>
@@ -1296,27 +1153,42 @@
             <div class="conts">
                 <div class="rows">
                     <div class="labs fl">消息内容</div>
-                    <div class="text fr">
+                    <div class="text fr" v-if="sayModelValue.type == 0">
                         <textarea name="" id="" cols="0" rows="0" v-model="sayModelValue.cont"></textarea>
+                    </div>
+                    <div class="text fr" @click="sayUploadImg" v-else-if="sayModelValue.type == 1">
+                        <img :src="sayModelValue.cont" alt="" class="group-img" />
+                        <input type="file" ref="sayImgFile" @change="sayImgUpload" style="display: none" />
+                    </div>
+                    <div class="text fr" @click="sayUploadAudio" v-else-if="sayModelValue.type == 2">
+                        <img :src="tianjia" alt="" class="group-img" />
+                        <audio :src="sayModelValue.cont" controls />
+                        <input type="file" ref="sayAudioFileRef" @change="sayAudioUpload" style="display: none" />
                     </div>
                 </div>
                 <div class="rows">
                     <div class="labs fl">状态</div>
                     <div class="text fr">
                         <div class="select">
-                            <div class="box fl acti">
-                                <input type="radio" checked name="open" id="" />
-                                <label>开启</label>
-                            </div>
                             <div class="box fl">
-                                <input type="radio" name="open" id="" />
-                                <label>关闭</label>
+                                <el-radio-group v-model="sayModelValue.state">
+                                    <el-radio :label="1" size="small">开启</el-radio>
+                                    <el-radio :label="0" size="small">关闭</el-radio>
+                                </el-radio-group>
                             </div>
+                            <!-- <div class="box fl " :class="{acti:  sayModelValue.state == 1}">
+                                <input type="radio" name="open" id="addSayStateOpen" value="1" v-model="sayModelValue.state" :checked="sayModelValue.state==1" />
+                                <label for="addSayStateOpen">开启</label>
+                            </div>
+                            <div class="box fl" :class="{acti:  sayModelValue.state == 0}">
+                                <input type="radio" name="open" id="addSayStateClose" value="0"  v-model="sayModelValue.state" :checked="sayModelValue.state==0"/>
+                                <label for="addSayStateClose">关闭</label>
+                            </div> -->
                         </div>
                     </div>
                 </div>
                 <div class="button">
-                    <button @click="isSayAdd ? addSayFunc(0) : editSayFunc()">确定</button>
+                    <button @click="isSayAdd ? addSayFunc(sayModelValue.type) : editSayFunc()">确定</button>
                 </div>
             </div>
         </div>
@@ -1328,12 +1200,21 @@
             <div class="conts">
                 <div class="rows">
                     <div class="labs fl">消息内容</div>
-                    <div class="text fr">
+                    <div class="text fr" v-if="fastModelValue.type == 0">
                         <textarea name="" id="" cols="0" rows="0" v-model="fastModelValue.msg"></textarea>
+                    </div>
+                    <div class="text fr" @click="fastUploadImg" v-else-if="fastModelValue.type == 1">
+                        <img :src="fastModelValue.msg" alt="" class="group-img" />
+                        <input type="file" ref="fastImgFile" @change="fastImgUpload" style="display: none" />
+                    </div>
+                    <div class="text fr" @click="fastUploadAudio" v-else-if="fastModelValue.type == 2">
+                        <img :src="tianjia" alt="" class="group-img" />
+                        <audio :src="fastModelValue.msg" controls />
+                        <input type="file" ref="fastAudioFileRef" @change="fastAudioUpload" style="display: none" />
                     </div>
                 </div>
                 <div class="button">
-                    <button @click="isFastAdd ? addFastFunc(0) : editFastFunc()">确定</button>
+                    <button @click="isFastAdd ? addFastFunc(fastModelValue.type) : editFastFunc()">确定</button>
                 </div>
             </div>
         </div>
@@ -1352,18 +1233,32 @@
                 <div class="rows">
                     <div class="labs fl">类型</div>
                     <div class="text fr">
-                        <select name="" id="">
-                            <option value="">文本</option>
-                            <option value="">文本2</option>
-                            <option value="">文本3</option>
+                        <select name="" id="" v-model="quaModelValue.type">
+                            <option value="0">文本</option>
+                            <option value="1">图片</option>
+                            <option value="2">语音</option>
                         </select>
                     </div>
                 </div>
                 <div class="rows">
                     <div class="labs fl">消息内容</div>
-                    <div class="text fr">
+                    <div class="text fr" v-if="quaModelValue.type == 0">
                         <textarea name="" id="" cols="0" rows="0" v-model="quaModelValue.a"></textarea>
                     </div>
+                    <div class="text fr" v-else-if="quaModelValue.type == 1" @click="quaImgUploadClick">
+                        <img
+                            style="width: 50px; height: 50px; display: block"
+                            :src="[quaModelValue.a == '' ? tianjia : quaModelValue.a]"
+                            class="group-img"
+                        />
+                        <input type="file" ref="quaImgFileRef" @change="quaImgUploadChange" style="display: none" />
+                    </div>
+                    <div class="text fr" v-else-if="quaModelValue.type == 2" @click="quaAudioUploadClick">
+                        <img style="width: 50px; height: 50px; display: block" :src="tianjia" class="group-img" />
+                        <audio :src="quaModelValue.a" controls />
+                        <input type="file" ref="quaAudioFileRef" @change="quaAudioUploadChange" style="display: none" />
+                    </div>
+                    <div class="text fr" v-else></div>
                 </div>
                 <div class="rows">
                     <div class="labs fl">状态</div>
@@ -1381,7 +1276,7 @@
                     </div>
                 </div>
                 <div class="button">
-                    <button @click="isQuaAdd ? addQuaFunc(0) : editQuaFunc()">确定</button>
+                    <button @click="isQuaAdd ? addQuaFunc(quaModelValue.type) : editQuaFunc()">确定</button>
                 </div>
             </div>
         </div>
@@ -1407,7 +1302,7 @@
                 <div class="rows">
                     <div class="labs fl">群公告</div>
                     <div class="text fr">
-                        <textarea name="" id="" cols="0" rows="0" v-model="groupModel.announ"></textarea>
+                        <textarea name="" id="" cols="0" rows="0" v-model="groupModel.annou"></textarea>
                     </div>
                 </div>
                 <div class="rows">
@@ -1460,18 +1355,51 @@
         </div>
     </div>
     <audio ref="audioRef"></audio>
+
+    <!-- <el-dialog v-model="audioDialog" width="50%">
+        <div class="dialogRecoder">
+            <el-progress :color="colors" type="dashboard" :format="recoderFormat" :stroke-width="10" :percentage="recoderSecond"></el-progress>
+            <br />
+            <audio v-show="recorderEnd != null" controls ref="recordAudioRef" muted="muted" src="" id="audio"></audio>
+            <br />
+            <el-button @click="startRecoder()" size="small" type="primary">开始</el-button>
+            <el-button @click="stopRecoder()" size="small" type="warning">结束</el-button>
+            <el-button @click="cancelRecoder()" size="small" type="danger">取消</el-button>
+            <el-button @click="sendRecoder()" size="small" type="success">发送</el-button>
+        </div>
+    </el-dialog> -->
 </template>
 
 <script setup>
 import $ from 'jquery'
-import { ref, reactive, toRefs, onMounted, toRef, onUnmounted, nextTick, computed } from 'vue'
 
-// 引入浏览器指纹识别
-import Fingerprintjs2 from 'fingerprintjs2'
-// 引入websocket
-import SocketService from '@/utils/websocket'
-import { useRoute } from 'vue-router'
-const route = useRoute()
+import { ref, reactive, toRefs, onMounted, onUnmounted, nextTick, computed } from 'vue'
+
+import { Decrypt, Encrypt } from '@/utils/encrypt'
+
+import { ElButton, ElUpload, ElMessage, ElSwitch, ElLoading, ElDialog, ElProgress } from 'element-plus'
+import { UploadFilled } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+const router = useRouter()
+
+// 引入layer
+import { layer } from 'vue3-layer'
+
+//引入二维码VUE-QR
+import QrcodeVue from 'qrcode.vue'
+
+// 引入public
+import { getImageUrl, convertChatMsg, getMsgType, get_suffix, getNowDate } from '@/utils/public'
+
+// 获取文件md5
+import tool from '@/utils/tool'
+
+import send from '@/assets/sound/send.wav'
+import S7501 from '@/assets/sound/7501.wav'
+import smessage from '@/assets/sound/message.wav'
+
+// 引入 录音
+import Recorder from 'js-audio-recorder'
 
 import {
     getCustInfo,
@@ -1529,21 +1457,21 @@ import {
     delGroup,
     delGroupMember,
 } from '@/api/user'
-import { Decrypt, Encrypt, encryptByMd5 } from '@/utils/encrypt'
 
-import { ElMessage, ElImage, ElUpload, ElSwitch } from 'element-plus'
+import { renewal } from '@/api/login'
+import tianjia from '@/assets/img/shuxing-img.png'
+
+// 引入浏览器指纹识别
+import Fingerprintjs2 from 'fingerprintjs2'
+// 引入websocket
+import SocketService from '@/utils/websocket'
+import { useRoute } from 'vue-router'
+const route = useRoute()
+
 // 引入pinia
+/* eslint-disable */
 import { useAppStore } from '@/stores/app'
 const appStore = useAppStore()
-
-// 引入layer
-import { layer } from 'vue3-layer'
-
-// 引入public
-import { getImageUrl, convertChatMsg, getMsgType, get_suffix, getNowDate } from '@/utils/public'
-
-// 获取文件md5
-import tool from '@/utils/tool'
 
 onMounted(() => {
     // loadScript()
@@ -1551,6 +1479,10 @@ onMounted(() => {
     // createFingerprint()
     getCustInfoFunc()
     getSessListFunc()
+
+    // const res = `KR41BED1CvLBG6gqyhRwjacl2Zv597BqPvsKLWD35QiWXlcWdYb6+wyvJeOk1SM1NjLmfRX/8YXNaa3yNWaHEV0M8xdG3AAfhlO/IqAU5kdHeEB140Vw2nxX9SrDTt7Z6dSybLZTrDFaPPthSkSkGFklAxf6ziWXSOSQBr1OZaVO0xokTpmnVE2uNNHIoGfU9n216N7jT0HFnyfJB5dgZk3oJybCC8KulTxQh6l0ArPiryNNeOoFhScF/oBMBopdA+c+wvlAj8tW9zQ9I+qkuTKw1lGK4BSQ+NTZGOaK9Fvz/iL/bCGy5N7Tu5ohwiQyAJDoIkQTcQlNxa9QchuuTOwPwXwCQxKYMryZbPaZ438h5RL5/ZWvxWgI7WZapnL+XI42U/eN0VRWSh8lg+KaeEdTMjWF9BU9I56/0fHxO+oCFitmjB6MG6+RvDyxfkraO1ui3XVw7cMTFW868KqFmT6B2J2RY1AnrDWNcwn+U9hsZY4JFppgjmGuNUnZeRh/kLxpIQKkPy8M8+iJExplCk44xbh6rEB5R6AUU9uWqKmimM/v6XZZA3WW0QJrPueP1bZArGKczkJ3O/grNd0wKI6woakDfDiLPPQHwqPr7gIRTCmmRXb9fkyMrnCdMT6R0Py06zB7Prs036DfuMfwo9MdFXoNM6Im1Qka7ASvufa2Y1kHMtKGwKluBwZBTqRs9bwo3oCFHYhDCUU3ffVy+bpQZBcGxWy+Zxin/WFjs8mknkknvl1JCXEY4rZMADCR1mxwFvdVDTjieKvCSdYBcD9VexBD2lvBgA3y0c5X+ysOS//gLIIc2RXEy6tJEqACPSx/otXe9obr+uSMSJLls1OZBpx4foo5O7RofH5Ypp+QEjBhK0SSXY85DAe/VbFzJMO+jGJsZ45KG/MGBWeNkWiQ+1kPh1Vo6N7fwvJXJRFPj1xcYl695LV0ZcyrWYQA/Uz+kNaO8ORudbGHKPyB+4+sADxwttnR9q40i1HxVQzSG28W92wz2a4G9zt3ycezPBp8VtDAWcb2X00dGv9/jCMNAqc2TXR0716v6lQYjPwXfDtKe6zdSClIkWu66cIIOoqM9ySuQlCpXiNvRdPtTy1Kzm079XbF7rQCtJJPPDRl5AuC34MV6X6hgzoGcuEBM3qkgmPY443lbjdzXS02shPsl6XFa0WjmiciGvBhOGkwTUBzExP0BSC2pXc9pqp4RsOqp80O/rWn+RXMH+wmrHOxkGFvnNAFU2+F91YQJbKZgZE36ecfNxslUjGbso0XUvEipzMT8glKt6R6gOY+OyHuh2hLwuiNlCj/bZg8N+MSHAOSjgIZ0swWPS+5UwCeP0BjcOPr3D7Yr605zuvrkd3bK7gI00T8Yo8StWz/K0PjBBXdThq+jx/JBe/PDzX8S6yQ77qYJZxKgWI0fKVKZBfNvCOnNtcJ6M+zwmbeV//02PSD3xY0/4aDDNnweyAVpv4bqUA+sESI0fmi0KbhzNsrgRvY1w4D16mLDqxNvMx+O0FHeuoFBv0FKUfQ1i4y3VVcqhETg+FSFoLJQGKEgvRt+YQCOo/7PBVd8vmu9QUQJwnzsvXyha9km3jy0lnzf6qpESIJT1sHnsqGsHlon5lQRHkpuXcG0/JmpcsMSqPLfXbdTpKyaqyDPpTkzoRm85hqqeW1x/6ImgwLbcnlW9d0X14LXVS6vdMaM7Cj3l8YS/Q0k35/pNyQCwWtzXoUP1V7EEPaW8GADfLRzlf7KzlcTdipQ213iuGcFOxmhgf/mi3Qw7mz18NHhEy+J7ljl4M78OP/Nwbv56WB839dAXrlKRmXETmPCuFrUXnhdyOiwK+lqH7s9XemMDDsH4VA5ZkrH066E2p0Um45hwVSwZevBAQ/M7Sl58jWI3mLL7zQOlARWhFxlzttZSBbxhwFFn3b7zGoWQTRpx+u15vZ0VqXNCk5jFxUFO12fcENbTKOUjJaQ7wCkH4KPhdoLGYRheocAmFZKXXVeqERQjw0iuriykoX3PWYT7Z19trC10yiLLqTaqPnxDcYvgPgMHY6LUrObTv1dsXutAK0kk88NGXkC4LfgxXpfqGDOgZy4QEzeqSCY9jjjeVuN3NdLTay1BNfyuQh+quPSx4jaf9h8w8q18ouHBBp3ifJ2hNxW7eqIZR75+pIMbUVeClPlU/iWw4d/2TTxaUSijbiQKb9WClIStPs+CyMIxOSnw4Yew39q+IDraLCLU011+q5LeKojoCkSypVs7wmfVLwnChwaoLPGwkG+qBoiHX2RgzM8H/4IeEKu1AvEDagB0dqCbG2RkFsSxlhcT5ni7XFV8Yy2c1Of0H6UyozOGm68hZigjBg5Fh6UEw6ohoRH+RADHYfBpi0cBhznliuMpzF0U503sJ1XbkgruUlvvm3Xl/07UenA/71HFrz6gluSMAEAwcOharibbGAS5CWF314oFmSYuQSil/RzDstIcBpSEiWnT5FolmxHwouqGCve7lCEisrD0NOjV3+zhmkiG+KuPP+CzI/FCSPSIRwxZ1oneMKIkCjVAK6ayZ34jVD2Z755LWHTqGP46UNo+2k6ZrccEBl4U5scNqy6PvPtvZTMxQ5ace4fglQ3m9DFc2O+mqAnuBsiXb4FS58E+UgN5XYdiFisNnsUoP1kYW56Z7ditpgaUvcWVX7+n5ICcPEU4w7Zjr7nuKuPqnFVWczeyT3eA993KawEeKj2DFIz3cTPSnB7R9n+2m4YuNVqsAC6s8bN84Tgs8bCQb6oGiIdfZGDMzwf/gh4Qq7UC8QNqAHR2oJsbZGQWxLGWFxPmeLtcVXxjLZ01D+MCyVx6Co2x/Z0B4rvjK0BMBqMMn+W/BmJ3HKmBxvkBnMKOMpKM/AnMIJkkDgvXQ1bDhsMaTFZIRvPYRCaUzpuPTl1BbISEyZzhr9LN0YnSVmPYL0DHQdfcFlqwKsdKclfpIzXeUUF/QibmudtgN+4qZSMyENnTTsa5Q6dtqvTMlX4c+xAel202HKbMkzlf0WfXP8U5a2sQNCfkyiuSBhlXHGRzh0068NehVJLT56WrEmyrg+F43obXv22bvaP/sVSHd8gI8DhXdkL9UW0sP29zsnWpPkpQ/Qy7lNBWTSXPv5PypOJpRT1u3UUty1IHRt/pi9p7/dZBBheaz5WbcVickdefn83SliXCMjb4JfHoR5uCH1e8UPVNqqdeADytZm3PQJj6XdVBzPt55om8m8X4VtSljj7O9BvFgQZTYg9E493+j1M4snl1+lSmo8pL0KLP8dcXlwcqtqhieiA+wPwXwCQxKYMryZbPaZ4393Z7kTY2dLlppCO4MzzZ5d5q2zVnPsHlAlBtWqWsV7wT1rfaUAZ+UEDO/V4H4g29AaBiicg7yBVStk+s/KZMsFtNRPRwbIEAsec2gsMmDcXkEg3yXfpsPI30MWwkNnZosxADPk8CfQ0t7DhUFQEBDaf87v/5yh0lNN+CZwcN86bZesC49OxvbKwTZrT4Z3pmCuiuero3oBssfB0aqAHkd6bVqmVE9cjhR2h6dMhLirRglm874+RAcRapqlvyhY55HRYzEV8gv4wUS2zXxV40dRATPcStGoY1p/hufcKGdl/CCY+Ajx2DLjyI9DD6k/v3s29CbTe8RYQsXpfPMI6ps8TyTuQn4whEG+qv2zsAe6y5FOsIZK/Sa7wXCW0G1r7hG0DRG/ELUfnr85RyQvcV1q0fP1WOBq487Lukw4cQ6LlIFk5o9nf7SjGyvD39qtFhsU1zMFC8JAsPJPHGpIrfwUOJ0iLJ5+yyCfyoVjlh4nhRtmK+qRfOSBH23kZ/3SiMvips9E+h1fjq2HBw5JIgUoRR5PtVm++h5g4yPyvlSUF1HSR78q7PKAZx0X0ad5PnVAQOSk5FgwdB4DrJhqfcAWZNYGSqJ7gEwOrHTXC8diz+yMSLMG0Oe9srIea1iMFIo7W6LddXDtwxMVbzrwqoWZZg/10CpIExJm0J++680YiCo5nef71N6ZhWyZdfkQWHNqXtZEGYkMdx4eAXjvEOwVxH+jC6fL0t7OdNOEvT/pelcqlEV4bdMEMrdtM/jASO5A3FWYagjEx8mGP5qfaEEe/U94Ztb0Oomyus4z1injqtA6UBFaEXGXO21lIFvGHAX80xrI/y6nejspLCu5cJJQWpc0KTmMXFQU7XZ9wQ1tMicoE6Nf9dw6Ha01uEfQJigZy6LFTb/EZnZ7+ICJ9vDaSujrmxkRhFlpjt0GP/m/Es2y+60wyoRi0rqGsb4D5RctSs5tO/V2xe60ArSSTzw0ZeQLgt+DFel+oYM6BnLhATN6pIJj2OON5W43c10tNrJQypDKdfuhRXtQQADvXOdd/xhAUKjc/Pg5fLnpSUQAAhHFcMPUcOo/V5+x/o459PnPYcGagZ3+UErVFnO+9e7tc5JMISRicWcitA6gVyhPWa0p4g125HaLzAE4ZJDrOM9VC4OnuRi7/ZK5YH5wt+uRYCb2OSpLyl0jpcF9pqkyYOCJCM4v5HHZj+gExQ+BDzl93JBCfhdtqRmFuyrP0YQbyL61TDfqwdvcDz/GbVv+8xL16rcGFdJdlz3L3O5Rvfc0VXnO4tS9pOY7d/jf3PfoxAE//gj80t0yuZ6pZTID/mfzvws1ZoKjTV6bGrV26xj6qpwx3hjVM5UwdYngNbCemT4iIhxyTm4fkJW/VUvIpHWyfB4oSgVK3HZ1/liqEZ+fDMZQMv5QCMpzP/MKsKrx0vAjeWhZ3QPJ6U+w0DTvk5cg703lgSH06xOwrpcoGOxnalus/TzAb51f9P1ad1ayP5QTmHWF+/KNGPIbuIa1f6GaKMPgMUl49Ws5Bgtq5NWDK2n+7V2R4hJ7M3h/gMagvONYeQqS1MGNmo4A93hxDUdmFmC8XKnsuS+XE/YUMzdj7H9mnhV579RfLh1tOfpqUf6dFIQ7RUrBKvKSIdDGZRCTiBDGiJ6vNtIDNO7aEdiLz7A5DuX7KLIbewo5DQmLpyXyXVGtgff13jdOzQ1vqiHuh2hLwuiNlCj/bZg8N+MSHAOSjgIZ0swWPS+5UwCefBFBTLn8EINzQGqTiJPJeHJKWfOtAQDlQbYM0JOMr/m05hIuKHP79MpRzp4LgNSSHUfFLMpIg2lxoWTtR6tJf9MdFXoNM6Im1Qka7ASvufa2Y1kHMtKGwKluBwZBTqRs81gQCtNPQzaB73/EEXJIV5hOkJ2UY0zdAPYXZll9Zaqbu9RJq9Tbd3GMxP7a0uw2acpnTN/AYfOTUa0lpE8TrrbZZXuLJXtnRhz6GcQKh8g=`
+    // console.log( Decrypt(res, appStore.token) )
+
     // 获取快捷短语
     getFastListFunc()
     SocketService.Instance.registerCallBack('successful_launch', _successfulLaunch)
@@ -1563,6 +1495,133 @@ onUnmounted(() => {
     SocketService.Instance.close()
 })
 
+/*************  录音功能开始 ************/
+
+// 发送录音操作
+const msgAudioRef = ref(null)
+const audioUploadClick = () => {
+    msgAudioRef.value.click()
+}
+const msgAudioChange = async (e) => {
+    let load = layer.load(0)
+    try {
+        const url = await uploadFile(e, 1)
+        send_msg_cont.value = `[Voi=${url}]`
+        sendMsgClick()
+    } catch (err) {
+        layer.close(load)
+        layer.msg(err)
+    } finally {
+        layer.close(load)
+    }
+}
+// 发送录音操作结束
+
+const audioDialog = ref(false)
+const recorderEnd = ref(null)
+const recoderSecond = ref(0)
+const recoderFormat = (percentage) => {
+    return percentage + 's'
+}
+
+const colors = [
+    { color: '#f56c6c', percentage: 20 },
+    { color: '#e6a23c', percentage: 40 },
+    { color: '#5cb87a', percentage: 60 },
+    { color: '#1989fa', percentage: 80 },
+    { color: '#6f7ad3', percentage: 100 },
+]
+
+const recorder = ref(null)
+const recordAudioRef = ref(null)
+
+const startRecoder = () => {
+    if (recorder.value) {
+        recorder.value.destroy()
+        recorder.value = null
+    }
+    Recorder.getPermission()
+        .then(() => {
+            recorder.value = new Recorder()
+            recorder.value.start()
+            recorder.value.onprogress = (params) => {
+                recoderSecond.value = parseInt(params.duration)
+                if (recoderSecond.value >= 60) stopRecoder()
+            }
+        })
+        .catch((err) => {
+            ElMessage({ type: 'error', message: err, showClose: true })
+        })
+}
+const stopRecoder = () => {
+    if (!recorder.value) {
+        return
+    }
+    let blob = recorder.value.getWAVBlob()
+    recordAudioRef.value.src = URL.createObjectURL(blob)
+    recordAudioRef.value.controls = true
+    recorderEnd.value = blob
+    recorder.value.destroy()
+    recorder.value = null
+}
+const cancelRecoder = () => {
+    audioDialog.value = false
+    if (!recorder.value) {
+        return
+    }
+    recorder.value.destroy()
+    recorder.value = null
+    recoderSecond.value = 0
+}
+const sendRecoder = () => {
+    stopRecoder()
+    if (!recorderEnd.value) return
+    let formdata = new FormData()
+    tool.md5(recorderEnd.value)
+        .then((md5Res) => {
+            // console.log(md5Res)
+            let newFilename = md5Res + '.mp3'
+            upload({ type: 1, name: newFilename }).then((res) => {
+                if (res.code != 0) {
+                    return ElMessage({ type: 'error', message: res.msg, showClose: true })
+                }
+                let _data = JSON.parse(Decrypt(res.result, appStore.token))
+                const { state, property } = _data
+                if (!state) {
+                    const { accessid, dir, expire, host, policy, signature } = property
+                    let formData = new FormData()
+                    formData.append('OSSAccessKeyId', accessid)
+                    formData.append('signature', signature)
+                    formData.append('policy', policy)
+                    formData.append('key', dir + newFilename)
+                    formData.append('success_action_status', 200)
+                    formData.append('file', recorderEnd.value)
+
+                    uploadAliOss(host, formData)
+                        .then((res) => {
+                            const url = `${host}/${dir}${newFilename}`
+                            send_msg_cont.value = `[Voi=${url}]`
+                            sendMsgClick()
+                            audioDialog.value = false
+                        })
+                        .catch((err) => {
+                            ElMessage({ type: 'error', message: err, showClose: true })
+                        })
+                } else {
+                    const { url } = _data
+                    send_msg_cont.value = `[Voi=${url}]`
+                    sendMsgClick()
+                    audioDialog.value = false
+                }
+            })
+        })
+        .catch((err) => {
+            console.log('recorderEnd to md5 error:', err)
+        })
+}
+
+/*************  录音功能结束 ************/
+
 /*************  客服操作开始 ************/
 
 const kefuState = reactive({
@@ -1572,15 +1631,26 @@ const kefuState = reactive({
     c_pic: '',
     c_dutime: '',
     ws_addr: '',
+    face_url: '',
+    title: '',
 })
-const reconnectTimer  = ref(0)
+const reconnectTimer = ref(0)
 
+const { c_user, c_name, c_pic, c_dutime, id, ws_addr, face_url, title } = toRefs(kefuState)
 
-const { c_user, c_name, c_pic, c_dutime, id, ws_addr } = toRefs(kefuState)
+// 标签背景颜色计算属性
+const typeBgColor = (c_type) => {
+    return c_type == 0 ? '#CCCC00' : '#FF6666'
+}
 
 // 获取客服信息
 const getCustInfoFunc = () => {
-    if(reconnectTimer.value > 0){
+    const loading = ElLoading.service({
+        lock: true,
+        text: '正在连接中...',
+        background: 'rgba(0, 0, 0, 0.7)',
+    })
+    if (reconnectTimer.value > 0) {
         clearInterval(reconnectTimer.value)
         reconnectTimer.value = 0
     }
@@ -1598,6 +1668,10 @@ const getCustInfoFunc = () => {
             kefuState.c_pic = info.c_pic
             kefuState.c_dutime = info.c_dutime
             kefuState.ws_addr = info.ws_addr
+            kefuState.face_url = info.face_url
+            kefuState.title = info.title
+            appStore.setTitle(kefuState.title)
+            document.title = info.title || appStore.title
             editCustModel.nick = info.c_name
             editCustModel.pic = info.c_pic
             // 连接websocket
@@ -1605,11 +1679,11 @@ const getCustInfoFunc = () => {
             SocketService.Instance.connect(wsAddr)
                 .then(() => {
                     // 检测是否断线，检测断线重连
-                    reconnectTimer.value = setInterval(()=>{
-                        if(!SocketService.Instance.connected){
+                    reconnectTimer.value = setInterval(() => {
+                        if (!SocketService.Instance.connected) {
                             // 如果是token链接失败, 不要在重新连接了
-                            if(isLoginFailed.value){ 
-                                if(reconnectTimer.value > 0){
+                            if (isLoginFailed.value) {
+                                if (reconnectTimer.value > 0) {
                                     clearInterval(reconnectTimer.value)
                                     reconnectTimer.value = 0
                                     return
@@ -1618,83 +1692,40 @@ const getCustInfoFunc = () => {
                                 chatState.message = []
                                 getCustInfoFunc()
                             }
-                        } 
+                        }
                     }, 5000)
                 })
                 .catch((err) => {
-                    return ElMessage({ type: 'error', message: err.message, showClose: true })
+                    ElMessage({ type: 'error', message: err, showClose: true })
+                })
+                .finally(() => {
+                    loading.close()
                 })
         })
         .catch((err) => {
+            loading.close()
             layer.msg(err.message)
         })
+        .finally(() => {
+            loading.close()
+        })
+
+    // setTimeout(()=>{
+    //     SocketService.Instance.close()
+    // }, 10 * 1000)
 }
 
 // 客服头像更改上传文件
-const uploadFunc = (e, _type) => {
-    let file = e.target.files[0]
-    let filename = file.name
-    let suffix = get_suffix(filename)
-
-    if (!file) return
-    let load = layer.load(0)
-    let uploadUrl = ''
-    tool.md5(file)
-        .then((md5Res) => {
-            let newFilename = md5Res + suffix
-            upload({ type: _type, name: newFilename })
-                .then((res) => {
-                    if (res.code != 0) {
-                        return
-                    }
-                    let _data = JSON.parse(Decrypt(res.result, appStore.token))
-                    const { state, property } = _data
-                    if (!state) {
-                        const { accessid, dir, expire, host, policy, signature } = property
-                        let formData = new FormData()
-                        formData.append('OSSAccessKeyId', accessid)
-                        formData.append('signature', signature)
-                        formData.append('policy', policy)
-                        formData.append('key', dir + newFilename)
-                        formData.append('success_action_status', 200)
-                        formData.append('file', file)
-
-                        uploadAliOss(host, formData)
-                            .then((res) => {
-                                layer.close(load)
-                                layer.msg('上传成功')
-                                uploadUrl = `${host}/${dir}/${newFilename}`
-                            })
-                            .catch((err) => {
-                                layer.close(load)
-                                layer.msg('上传失败=>' + err.message)
-                            })
-                    } else {
-                        const { url } = _data
-                        layer.close(load)
-                        layer.msg('上传成功')
-                        uploadUrl = url
-                    }
-                    editCustModel.pic = uploadUrl
-                })
-                .catch((err) => {
-                    layer.close(load)
-                    layer.msg(err.message)
-                })
-        })
-        .catch((err) => {
-            layer.close(load)
-            layer.msg(err.message)
-        })
+const uploadFunc = async (e, _type) => {
+    const url = await uploadFile(e, _type)
+    editCustModel.pic = url
 }
-
-//
 
 // 封装成promise的上传文件
 const uploadFile = (e, _type) => {
     return new Promise((resolve, reject) => {
         let file = e.target.files[0]
-        console.log(file)
+        // console.log(file)
         let filename = file.name
         let suffix = get_suffix(filename)
 
@@ -1761,9 +1792,12 @@ const setCustInfoFunc = () => {
                 layer.close(load)
                 return layer.msg(res.msg)
             }
-            getCustInfoFunc()
+            // getCustInfoFunc()
+            kefuState.c_nick = editCustModel.nick
+            kefuState.c_pic = editCustModel.pic
             layer.close(load)
             layer.msg('操作成功')
+            $('.alerts .alert-my .title i.closes').click()
         })
         .catch((err) => {
             layer.close(load)
@@ -1784,7 +1818,38 @@ const selectUser = reactive({
     c_top: '',
     c_ip: '',
     c_time: '',
+    c_banned: '',
+    c_annou: '',
+    c_ceiling: '',
+    c_number: '',
 })
+// 重置selectUser对象
+const clearSelectUser = () => {
+    const keys = Object.keys(selectUser)
+    let obj = {}
+    keys.forEach((item) => {
+        obj[item] = ''
+    })
+    Object.assign(selectUser, obj)
+}
+// 赋值selectUser
+const setSelectUser = (item) => {
+    selectUser.id = item.id
+    selectUser.c_addr = item.c_addr
+    selectUser.c_identity = item.c_identity
+    selectUser.c_nick = item.c_nick
+    selectUser.c_pic = item.c_pic
+    selectUser.c_note = item.c_note
+    selectUser.c_top = item.c_top
+    selectUser.c_ip = item.c_ip
+    selectUser.c_time = item.c_time
+    selectUser.c_type = item.c_type
+    selectUser.c_banned = !!+item.c_banned
+    selectUser.c_annou = item.c_annou
+    selectUser.c_ceiling = item.c_ceiling
+    selectUser.c_number = item.c_number
+}
+
 const getChatListQuery = reactive({
     mid: '',
     page: 1,
@@ -1808,7 +1873,8 @@ const userClickHandler = (item) => {
     // 点击把聊天信息置空
     chatState.message = []
     // 右侧的也要置空
-    selectUser.value = {}
+    clearSelectUser()
+    setSelectUser(item)
 
     getUserinfoFunc(item)
     getChatListQuery.page = 1
@@ -1825,19 +1891,12 @@ const getUserinfoFunc = (user) => {
         .then((res) => {
             layer.close(load)
             if (res.code != 0) {
-                return layer.msg(res.msg)
+                clearSelectUser()
+                return layer.msg(res?.msg)
             }
             let _data = JSON.parse(Decrypt(res.result, appStore.token))
-            selectUser.id = _data.id
-            selectUser.c_addr = _data.c_addr
-            selectUser.c_identity = _data.c_identity
-            selectUser.c_nick = _data.c_nick
-            selectUser.c_pic = _data.c_pic
-            selectUser.c_note = _data.c_note
-            selectUser.c_top = _data.c_top
-            selectUser.c_ip = _data.c_ip
-            selectUser.c_time = _data.c_time
-            selectUser.c_type = user.c_type
+            setSelectUser(_data)
+            bannedState.value = !!+_data.c_banned
         })
         .catch((err) => {
             layer.msg(err.message)
@@ -1869,14 +1928,13 @@ const getChatListFunc = () => {
 
             createShowMsg(list)
 
-
-             // 发送消息已读
+            // 发送消息已读
             read({ mid: getChatListQuery.mid })
                 .then((res) => {
                     if (res.code != 0) {
                         return layer.msg(res.msg)
                     }
-                     // 发送成功，更新用户未读消息
+                    // 发送成功，更新用户未读消息
                     sessList.list.forEach((item) => {
                         if (item.c_identity == getChatListQuery.mid) {
                             item.c_read = 0
@@ -1885,7 +1943,6 @@ const getChatListFunc = () => {
                     })
                 })
                 .catch((err) => layer.msg(err.message))
-           
 
             layer.close(load)
         })
@@ -1911,9 +1968,9 @@ const _userAccess = (data) => {
     // getSessListFunc()
     let isFound = false
     let tt = {}
-    sessList.list.forEach((item,index)=>{
-        if(item.c_identity == data.c_identity){
-            console.log('item', item)
+    sessList.list.forEach((item, index) => {
+        if (item.c_identity == data.c_identity) {
+            // console.log('item', item)
             tt = item
             tt.c_online = true
             sessList.list.splice(index, 1)
@@ -1921,8 +1978,8 @@ const _userAccess = (data) => {
             return
         }
     })
-    if(!isFound){
-        let tmp ={
+    if (!isFound) {
+        let tmp = {
             id: data.id,
             c_addr: data.addr,
             c_identity: data.c_identity,
@@ -1938,7 +1995,7 @@ const _userAccess = (data) => {
             c_ceiling: 0,
             c_read: 0,
             c_online: true,
-            lastmsg: ''
+            lastmsg: '',
         }
         sessList.list.unshift(tmp)
     } else {
@@ -1948,8 +2005,8 @@ const _userAccess = (data) => {
 const _userOffline = (data) => {
     data = JSON.parse(data)
     // console.log('用户下线', data)
-    sessList.list.forEach(item=>{
-        if(item.c_identity == data.mid){
+    sessList.list.forEach((item) => {
+        if (item.c_identity == data.mid) {
             item.c_online = false
             return
         }
@@ -1957,21 +2014,10 @@ const _userOffline = (data) => {
 }
 const _messages = (data) => {
     let _data = JSON.parse(data)
-    console.log('收到新消息', _data)
-    if(_data.c_type == 0){
-            playSound('message')
+    // console.log('收到新消息', _data)
+    if (_data.c_type == 0) {
+        playSound('message')
     }
-    
-    /**
-   *  c_cont: "我的"
-      c_mid: "ab174f6bdc6f7e1c70ea17d2f861e645"
-      c_time: "2023-03-23 18:27:31"
-      c_type: 0
-      pic: "/img/head/5871c1_100x100.png"
-      unread: 1
-   *
-   */
-    
 
     // 如果当前选择的用户是当前用户
     if (selectUser.c_identity == _data.c_mid) {
@@ -1983,7 +2029,7 @@ const _messages = (data) => {
                     {
                         time: _data.c_time,
                         chat_type: _data.c_type,
-                        imgUrl: _data.c_pic,
+                        imgUrl: _data.pic,
                         msg: _data.c_cont,
                     },
                 ],
@@ -1993,7 +2039,7 @@ const _messages = (data) => {
             chatState.message[chatState.message.length - 1].data.push({
                 time: _data.c_time,
                 chat_type: _data.c_type,
-                imgUrl: _data.c_pic,
+                imgUrl: _data.pic,
                 msg: _data.c_cont,
             })
         }
@@ -2005,7 +2051,7 @@ const _messages = (data) => {
                 if (res.code != 0) {
                     return layer.msg(res.msg)
                 }
-                 // 更新用户的最后一条消息和未读消息为0
+                // 更新用户的最后一条消息和未读消息为0
                 sessList.list.forEach((item) => {
                     if (item.c_identity == _data.c_mid) {
                         item.lastmsg = _data.c_cont
@@ -2015,7 +2061,7 @@ const _messages = (data) => {
                 })
             })
             .catch((err) => layer.msg(err.message))
-       
+
         // 移动滚动条到最新
         nextTick(() => {
             chatContent.value.scrollTop = chatContent.value.scrollHeight
@@ -2133,7 +2179,7 @@ const createShowMsg = (_data) => {
                         {
                             time: _data[i].c_time,
                             chat_type: _data[i].c_type,
-                            imgUrl: _data[i].c_pic,
+                            imgUrl: _data[i].pic,
                             msg: _data[i].c_cont,
                         },
                     ],
@@ -2145,7 +2191,7 @@ const createShowMsg = (_data) => {
                 chatState.message[chatState.message.length - 1].data.push({
                     time: _data[i].c_time,
                     chat_type: _data[i].c_type,
-                    imgUrl: _data[i].c_pic,
+                    imgUrl: _data[i].pic,
                     msg: _data[i].c_cont,
                 })
             }
@@ -2162,7 +2208,7 @@ const createShowMsg = (_data) => {
                 chatState.message[0].data.unshift({
                     time: _data[i].c_time,
                     chat_type: _data[i].c_type,
-                    imgUrl: _data[i].c_pic,
+                    imgUrl: _data[i].pic,
                     msg: _data[i].c_cont,
                 })
             } else {
@@ -2174,7 +2220,7 @@ const createShowMsg = (_data) => {
                         {
                             time: _data[i].c_time,
                             chat_type: _data[i].c_type,
-                            imgUrl: _data[i].c_pic,
+                            imgUrl: _data[i].pic,
                             msg: _data[i].c_cont,
                         },
                     ],
@@ -2211,30 +2257,96 @@ const createShowMsg = (_data) => {
 const addGroupClick = () => {
     $('.alerts').fadeIn()
     $('.alerts-groupTxt').slideDown()
+    isGroupAdd.value = true
+    clearGroupModel()
 }
 
 /***************群聊操作结束 ****************/
 
 /************* 接待列表操作开始 *************/
 const recepList = ref([])
+const getRecepListQuery = reactive({
+    page: 1,
+    limit: 10,
+})
 const getRecepListFunc = () => {
     let load = layer.load(0)
-    getRecepList()
+    getRecepList(getRecepListQuery)
         .then((res) => {
             if (res.code != 0) {
                 layer.close(load)
                 return layer.msg(res.msg)
             }
             let _data = JSON.parse(Decrypt(res.result, appStore.token))
-            console.log(_data)
-            const { list } = _data
-            recepList.value = list
+            // console.log(_data)
+            const { list, page } = _data
+            if (getRecepListQuery.page > page) {
+                layer.close(load)
+                getRecepListQuery.page = page
+                return
+            }
+            if (getRecepListQuery.page == 1) {
+                recepList.value = list
+            } else {
+                recepList.value = [...recepList.value, ...list]
+            }
+
             layer.close(load)
         })
         .catch((err) => {
             layer.close(load)
             layer.msg(err.message)
         })
+}
+
+// 接待翻页
+const recepSCrollHandler = (e) => {
+    let el = e.currentTarget
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight) {
+        getRecepListQuery.page++
+        getRecepListFunc()
+    }
+}
+
+// 接待发消息
+const selectSendMsg = (item) => {
+    const load = layer.load(0)
+    getUserinfo({ mid: item.c_identity }).then((res) => {
+        if (res.code != 0) {
+            layer.close(load)
+            return layer.msg(res.msg)
+        }
+        let isFound = false
+        sessList.list.forEach((v, i) => {
+            if (v.c_identity == item.c_identity) {
+                $('.containers-fr').addClass('onChat')
+                $('.alert-bg').click()
+                isFound = true
+            }
+        })
+
+        if (!isFound) {
+            let _data = JSON.parse(Decrypt(res.result, appStore.token))
+            // 把用户添加到 sessList中
+            let tmp = {
+                id: _data.id,
+                c_identity: _data.c_identity,
+                c_nick: _data.c_nick,
+                c_pic: _data.c_pic,
+                c_type: _data.c_type,
+                c_time: _data.c_time,
+                c_online: _data.c_online,
+                c_read: _data.c_read,
+                lastmsg: _data.lastmsg,
+            }
+            sessList.list.unshift(tmp)
+        }
+
+        userClickHandler(item)
+        layer.close(load)
+        $('.containers-fr').addClass('onChat')
+        $('.alert-bg').click()
+    })
 }
 
 /************* 接待列表操作结束 *************/
@@ -2265,8 +2377,43 @@ const sessList = reactive({
     // c_online: 0,
     // lastmsg: ''
 })
+
+// 从会话列表中移除指定
+const removeSessList = (mid) => {
+    //todo 更新会话列表
+    sessList.list.forEach((v, index) => {
+        if (v.c_identity == mid) {
+            sessList.list.splice(index, 1)
+            return
+        }
+    })
+}
+// 添加到会话列表中
+const addToSeeList = (item) => {
+    let tmp = {
+        id: item.id,
+        c_addr: item.c_addr,
+        c_identity: item.c_identity,
+        c_nick: item.c_nick,
+        c_pic: item.c_pic || item.pic,
+        c_note: item.c_note, // 备注
+        c_top: item.c_top,
+        c_ip: item.c_ip,
+        c_time: item.c_time,
+        c_type: item.c_type,
+        c_announ: item.c_announ,
+        c_banned: item.c_banned,
+        c_ceiling: item.c_ceiling,
+        c_read: item.c_read,
+        c_online: item.c_online,
+        lastmsg: item.lastmsg,
+    }
+    sessList.list.unshift(tmp)
+}
+
 // 取会话列表
 const getSessListFunc = () => {
+    // clearSelectUser()
     try {
         getSessList(sessListQuery).then((res) => {
             const { code, msg, result } = res
@@ -2274,6 +2421,7 @@ const getSessListFunc = () => {
                 return ElMessage({ type: 'error', message: msg, showClose: true })
             }
             let _data = JSON.parse(Decrypt(result, appStore.token))
+            // console.log(_data)
             const { count, list, page, pagesize } = _data
             if (page < sessListQuery.page) {
                 sessListQuery.page = page
@@ -2340,6 +2488,7 @@ const msgFileChange = async (e) => {
     try {
         const url = await uploadFile(e, 2)
         send_msg_cont.value = `[pic=${url}]`
+        sendMsgClick()
     } catch (err) {
         layer.close(load)
         layer.msg(err)
@@ -2380,22 +2529,46 @@ const createFingerprint = () => {
 // 右键选择的用户信息
 const rightMenuUser = ref('')
 const rightMenuUserModel = ref({})
+const isFirstShowSwitch = ref(false)
 // 展示或者隐藏右键菜单
 const isShowRightMenu = ref(false)
 const isShowGroupRightMenu = ref(false)
-// const isGroupValue = ref(false)
 const showRightMenuPos = reactive({
     x: 0,
     y: 0,
 })
 
 // 鼠标右键点击
+const rightMenuRef = ref(null)
 const priChatRightClick = (e, item) => {
-    rightMenuUser.value = item.c_identity
-    rightMenuUserModel.value = item
-    showRightMenuPos.x = e.clientX
-    showRightMenuPos.y = e.clientY
-    isShowRightMenu.value = true
+    isFirstShowSwitch.value = true
+    getUserinfo({ mid: item.c_identity })
+        .then((res) => {
+            if (res.code != 0) {
+                return layer.msg(res.msg)
+            }
+            let _data = JSON.parse(Decrypt(res.result, appStore.token))
+            // console.log(_data)
+            rightMenuUser.value = _data.c_identity
+            rightMenuUserModel.value = _data
+
+            isShowRightMenu.value = true
+            isFirstShowSwitch.value = false
+            nextTick(() => {
+                let browserH = window.innerHeight
+                let rightMenuH = rightMenuRef.value.offsetHeight
+                if (e.clientY + rightMenuH > browserH) {
+                    showRightMenuPos.y = browserH - rightMenuH
+                } else {
+                    showRightMenuPos.y = e.clientY
+                }
+                showRightMenuPos.x = e.clientX
+                // console.log(browserH, rightMenuH,showRightMenuPos)
+            })
+        })
+        .catch((err) => {
+            layer.msg(err.message)
+        })
 }
 
 //置顶操作
@@ -2469,19 +2642,70 @@ const setUnTopFunc = () => {
 }
 
 // 修改备注
+const isShowEditNoteDialog = ref(false)
+const editNoteModel = reactive({
+    mid: '',
+    note: '',
+    loading: false,
+})
+const showEditNoteDialog = () => {
+    isShowEditNoteDialog.value = true
+    editNoteModel.mid = rightMenuUser.value
+    editNoteModel.note = rightMenuUserModel.value.c_note
+}
+const editNoteSubmit = () => {
+    let load = layer.load(0)
+    setNote(editNoteModel)
+        .then((res) => {
+            if (res.code != 0) {
+                rightMenuUser.value = ''
+                layer.close(load)
+                return layer.msg(res.msg)
+            }
+            let tmp = {}
+            sessList.list.forEach((item, index) => {
+                if (item.c_identity == rightMenuUser.value) {
+                    tmp = item
+                    tmp.c_note = value
+                    // 删除后又插入数组
+                    sessList.list.splice(index, 1, tmp)
+                    return
+                }
+            })
+            rightMenuUser.value = ''
+            layer.msg('修改成功')
+            isShowEditNoteDialog.value = false
+        })
+        .catch((err) => {
+            rightMenuUser.value = ''
+            layer.msg(err.message)
+        })
+        .finally(() => {
+            layer.close(load)
+        })
+}
 const setNoteFunc = () => {
     if (rightMenuUser.value == '') {
         return layer.msg('请选择修改的用户')
     }
-    layer.prompt(
-        {
-            title: '修改' + rightMenuUser.value + '的备注',
-        },
-        (value, index, elem) => {
-            let load = layer.load(0)
 
-            setNote({ mid: rightMenuUser.value, note: value })
+    layer.prompt({
+        formType: 0,
+        title: '修改<b style="color:red;">' + rightMenuUserModel.value.c_nick + '</b>的备注',
+        content:
+            '<div><input type="text" name="txt_remark" id="note" style="width:200px;height:40px" value="' +
+            rightMenuUserModel.value.c_note +
+            '" ></input></div>',
+        yes: function (index, layero) {
+            let load = layer.load(0)
+            let value = $('#note').val()
+            let params = {
+                mid: rightMenuUser.value,
+                note: value,
+            }
+            setNote(params)
                 .then((res) => {
+                    console.log(res)
                     if (res.code != 0) {
                         rightMenuUser.value = ''
                         layer.close(load)
@@ -2506,9 +2730,13 @@ const setNoteFunc = () => {
                     rightMenuUser.value = ''
                     layer.msg(err.message)
                     layer.close(index)
+                    layer.close(load)
                 })
-        }
-    )
+        },
+        cancel: function () {
+            console.log('选择了取消')
+        },
+    })
 }
 
 // 清空聊天记录
@@ -2532,16 +2760,39 @@ const delChatFunc = () => {
 }
 
 // 删除会话
-const delSessionFunc = (_type, mid) => {
+const delSessionDirect = (_type, mid) => {
+    let load = layer.load(0)
+    let params = {}
+    if (_type == 0) {
+        params.mid = mid
+    }
+    params.type = _type
+
+    delSession(params).then((res) => {
+        if (res.code != 0) {
+            layer.close(load)
+            return layer.msg(res.msg)
+        }
+
+        //删除成功重新 获取接口渲染数据
+        chatState.message = []
+        // sessListQuery.page = 1
+        // getSessListFunc()
+        //todo 更新会话列表
+        clearSelectUser()
+        removeSessList(mid)
+        layer.msg('删除成功')
+        layer.close(load)
+    })
+    layer.close(index)
+}
+const delSessionFunc = (_type) => {
     layer.confirm(
         '确定删除吗?',
         { icon: 3, title: '提示' },
         function (index) {
             let load = layer.load(0)
             let params = {}
-            if (_type > 0) {
-                params.mid = mid
-            }
             params.type = _type
 
             delSession(params).then((res) => {
@@ -2554,6 +2805,9 @@ const delSessionFunc = (_type, mid) => {
                 chatState.message = []
                 sessListQuery.page = 1
                 getSessListFunc()
+                //todo 更新会话列表
+                // removeSessList(mid)
+
                 layer.msg('删除成功')
                 layer.close(load)
             })
@@ -2578,8 +2832,11 @@ const addBlackFunc = () => {
                 return layer.msg(res.msg)
             }
 
+            // getSessListFunc()
+            //todo 更新会话列表
+            removeSessList(rightMenuUser.value)
             rightMenuUser.value = ''
-            getSessListFunc()
+
             layer.close(load)
             layer.msg(res.msg)
         })
@@ -2606,11 +2863,15 @@ const QrState = reactive({
     code: '',
 })
 const showQrCode = () => {
+    QrState.url = ''
+    QrState.code = ''
+
     let load = layer.load(0)
     getSessCode({ type: 0 })
         .then((res) => {
             if (res.code != 0) {
                 layer.close(load)
+                $('.alert .alert-code .closes').click()
                 return layer.msg(res.msg)
             }
             let _data = JSON.parse(Decrypt(res.result, appStore.token))
@@ -2624,14 +2885,57 @@ const showQrCode = () => {
             layer.close(load)
         })
 }
+
+// const spCodeCanvasDom = ref(null)
+// const spCodeImg = ref('')
+
+const showSpQrCode = () => {
+    QrState.url = ''
+    QrState.code = ''
+    let load = layer.load(0)
+    getSessCode({ type: 0, special: true })
+        .then((res) => {
+            if (res.code != 0) {
+                layer.close(load)
+                $('.alert .alert-code-sp .closes').click()
+                return layer.msg(res.msg)
+            }
+            let _data = JSON.parse(Decrypt(res.result, appStore.token))
+            // console.log(_data)
+            QrState.url = _data.url
+            QrState.code = _data.code
+
+            //nextTick(()=>{
+            //const canvas = document.getElementById('spCodeCanvasDom')
+            // const ctx = canvas.getContext('2d')
+            // const imgData =  ctx.getImageData(0, 0, canvas.width, canvas.height)
+            // console.log(imgData)
+            //spCodeImg.value = canvas.toDataURL()
+            // let cropImgInfo = ctx.getImageData(0, 0, 200, 200)
+            // let newCanvas = document.createElement('canvas')
+            // newCanvas.width = 200
+            // newCanvas.height = 200
+            // let newCtx = newCanvas.getContext('2d')
+            // newCtx.putImageData(cropImgInfo, 0, 0)
+            // console.log( newCanvas.toDataURL())
+
+            //})
+
+            layer.close(load)
+        })
+        .catch((err) => {
+            layer.msg(err.message)
+            layer.close(load)
+        })
+}
 const QrCodeImg = computed(() => {
-    return QrState.code.length > 0 ? 'data:image/jpeg;base64,' + QrState.code : ''
+    return QrState.code?.length > 0 ? 'data:image/jpeg;base64,' + QrState.code : ''
 })
 
 //操作二维码
-const setSessCodeFunc = (_t) => {
+const setSessCodeFunc = (_t, special) => {
     let load = layer.load(0)
-    setSessCode({ type: _t })
+    setSessCode({ type: _t, special: special })
         .then((res) => {
             if (res.code != 0) {
                 layer.close(load)
@@ -2654,6 +2958,16 @@ const setSessCodeFunc = (_t) => {
 
 /****************黑名单操作开始  **********************/
 const blackList = ref([])
+// 从黑名单中移除
+const removeBlackList = (mid) => {
+    blackList.value.forEach((v, idx) => {
+        if (v.c_identity == mid) {
+            blackList.value.splice(idx, 1)
+            return
+        }
+    })
+}
+
 const getBlackListQuery = reactive({
     page: 1,
     limit: 10,
@@ -2668,13 +2982,25 @@ const getBlackListFunc = () => {
             }
             let _data = JSON.parse(Decrypt(res.result, appStore.token))
             // console.log(_data)
-            const { list } = _data
-            blackList.value = list
+            const { list, page } = _data
+            if (getBlackListQuery.page > page) {
+                getBlackListQuery.page = page
+                return
+            }
+            if (getBlackListQuery.page == 1) {
+                blackList.value = list
+            } else {
+                blackList.value = [...blackList.value, ...list]
+            }
+
             layer.close(load)
         })
         .catch((err) => {
             layer.close(load)
             layer.msg(err.message)
+        })
+        .finally(() => {
+            layer.close(load)
         })
 }
 
@@ -2695,8 +3021,13 @@ const cancelBlack = (item) => {
                         layer.close(load)
                         return layer.msg(res.msg)
                     }
-                    getBlackListFunc()
-                    getSessListFunc()
+                    getBlackListQuery.page = 1
+                    // getBlackListFunc()
+                    // todo 更新黑名单
+                    removeBlackList(item.c_identity)
+                    //todo  添加到会话列表中
+                    addToSeeList(item)
+
                     layer.close(load)
                     layer.msg(res.msg)
                 })
@@ -2710,6 +3041,15 @@ const cancelBlack = (item) => {
             $('.btn-slide').fadeOut()
         }
     )
+}
+
+// 黑名单翻页
+const blackHandlerScroll = (e) => {
+    let el = e.currentTarget
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight) {
+        getBlackListQuery.page++
+        getBlackListFunc()
+    }
 }
 
 /****************黑名单操作结束  **********************/
@@ -2733,13 +3073,22 @@ const getMassListFunc = () => {
     })
 }
 // 新建文字群发
-const massModelValue = ref('')
+const massModelValue = reactive({
+    id: '',
+    msg: '',
+    type: 0,
+})
+const clearMassModel = () => {
+    massModelValue.id = ''
+    massModelValue.msg = ''
+    massModelValue.type = 0
+}
 const addMassFunc = (_type) => {
-    if (massModelValue.value.length == 0) {
+    if (massModelValue.msg.length == 0) {
         return layer.msg('请填写群发内容')
     }
     let load = layer.load(0)
-    addMass({ type: _type, msg: Encrypt(massModelValue.value, appStore.token) })
+    addMass({ type: _type, msg: Encrypt(massModelValue.msg, appStore.token) })
         .then((res) => {
             if (res.code != 0) {
                 layer.close(load)
@@ -2760,79 +3109,52 @@ const addMassFunc = (_type) => {
         })
 }
 
-// 新建图片群发
-const btnImgMassFile = ref(null)
-const imgMassClick = () => {
-    btnImgMassFile.value.click()
+// 点击新建文本群发
+const addMassTxtClick = () => {
+    massModelValue.type = 0
+    isMassAdd.value = true
+    massModelValue.msg = ''
 }
 
-// 上传群发图片
-const uploadImgMass = (e) => {
-    let file = e.target.files[0]
-    let filename = file.name
-    let suffix = get_suffix(filename)
+//新建图片群发
+const addMassImgClick = () => {
+    $('.alerts').fadeIn()
+    $('.alert-msssText').slideDown()
+    massModelValue.type = 1
+    massModelValue.msg = tianjia
+    isMassAdd.value = true
+}
+// 新建录音群发
+const addMassAudioClick = () => {
+    $('.alerts').fadeIn()
+    $('.alert-msssText').slideDown()
+    massModelValue.type = 2
+    massModelValue.msg = ''
+    isMassAdd.value = true
+}
 
-    if (!file) return
-    let load = layer.load(0)
-    let uploadUrl = ''
-    tool.md5(file)
-        .then((md5Res) => {
-            let newFilename = md5Res + suffix
-            upload({ type: 1, name: newFilename })
-                .then((res) => {
-                    e.target.value = ''
-                    if (res.code != 0) {
-                        layer.close(load)
-                        return layer.msg(res.msg)
-                    }
-                    let _data = JSON.parse(Decrypt(res.result, appStore.token))
-                    const { state, property } = _data
-                    if (!state) {
-                        const { accessid, dir, expire, host, policy, signature } = property
-                        let formData = new FormData()
-                        formData.append('OSSAccessKeyId', accessid)
-                        formData.append('signature', signature)
-                        formData.append('policy', policy)
-                        formData.append('key', dir + newFilename)
-                        formData.append('success_action_status', 200)
-                        formData.append('file', file)
+// 新建图片群发上传
+const massImgFile = ref(null)
+const massUploadImg = () => {
+    massImgFile.value.click()
+}
 
-                        uploadAliOss(host, formData)
-                            .then((res) => {
-                                uploadUrl = `${host}/${dir}/${newFilename}`
-                            })
-                            .catch((err) => {
-                                layer.msg('上传失败=>' + err.message)
-                            })
-                    } else {
-                        const { url } = _data
+const massImgUpload = async (e) => {
+    massModelValue.msg = await uploadFile(e, 2)
+}
 
-                        uploadUrl = url
-                        // console.log('已经上传过了', url)
-                    }
+// 新建录音群发上传
+const massAudioFileRef = ref(null)
+const massUploadAudio = () => {
+    massAudioFileRef.value.click()
+}
 
-                    // 调用新建群发接口
-                    massModelValue.value = Encrypt(uploadUrl, appStore.token)
-                    addMassFunc(1)
-                    layer.close(load)
-                    layer.msg('新建图片群发成功')
-                })
-                .catch((err) => {
-                    layer.close(load)
-                    layer.msg(err.message)
-                })
-        })
-        .catch((err) => {
-            layer.close(load)
-            layer.msg(err.message)
-        })
+const massAudioUpload = async (e) => {
+    massModelValue.msg = await uploadFile(e, 1)
 }
 
 const isMassAdd = ref(true)
-const editMassModel = reactive({
-    id: '',
-    msg: '',
-})
+
 const massMoveUp = (item) => {
     if (item.id == 0) {
         return layer.msg('请选择需要操作的群发')
@@ -2905,36 +3227,36 @@ const massMoveDown = (item) => {
             layer.msg(err.message)
         })
 }
+// 编辑群发按钮
 const massEdit = (item) => {
     $('.btn-slide').fadeOut()
     if (item.id == 0) {
         return layer.msg('请选择需要修改的群发')
     }
     isMassAdd.value = false
-    editMassModel.id = item.id
-    massModelValue.value = item.c_cont
+    massModelValue.id = item.id
+    massModelValue.msg = item.c_cont
+    massModelValue.type = item.c_type
 }
+// 编辑群发确定事件
 const editMassFunc = () => {
     let load = layer.load(0)
-    editMassModel.msg = Encrypt(massModelValue.value, appStore.token)
-    setMass(editMassModel)
+    let msg = Encrypt(massModelValue.msg, appStore.token)
+    setMass({ id: massModelValue.id, msg })
         .then((res) => {
             if (res.code != 0) {
                 layer.close(load)
                 return layer.msg(res.msg)
             }
             // 查找到更新的数据然后修改
-            let tmp = {}
+
             massList.value.forEach((element) => {
-                if (element.id == editMassModel.id) {
-                    tmp = element
-                    tmp.c_cont = massModelValue.value
+                if (element.id == massModelValue.id) {
+                    element.c_cont = massModelValue.msg
                     return
                 }
             })
-            massModelValue.value = ''
-            editMassModel.id = ''
-            editMassModel.msg = ''
+            clearMassModel()
             $('.alerts').fadeOut()
             $('.alert-msssText').slideUp()
             layer.msg('操作成功')
@@ -2996,18 +3318,26 @@ const startMassFunc = (item) => {
                     }
                     //2、更新会话列表最后一次通讯时间
                     let now = getNowDate()
+                    let msg
+                    if (item.c_type == 0) {
+                        msg = item.c_cont
+                    } else if (item.c_type == 1) {
+                        msg = `[pic=${item.c_cont}]`
+                    } else if (item.c_type == 2) {
+                        msg = `[Voi=${item.c_cont}]`
+                    }
                     sessList.list.forEach((v) => {
                         v.c_time = now
-                        v.lastmsg = item.c_cont
+                        v.lastmsg = msg
                     })
 
                     // 更新消息到当前聊天窗口中去
                     if (selectUser.c_identity != '') {
                         insertNewMessage({
                             c_time: now,
-                            c_type: 0,
+                            c_type: 1,
                             c_pic: kefuState.c_pic,
-                            c_cont: item.c_cont,
+                            c_cont: msg,
                             c_mid: selectUser.c_identity,
                         })
                     }
@@ -3030,12 +3360,12 @@ const startMassFunc = (item) => {
 
 /********* 打招呼操作 **********/
 
+// 打招呼解析图片路径
+
 // 取打招呼列表
 const sayList = ref([])
 // 是否是新增招呼
 const isSayAdd = ref(true)
-// 新建图片招呼引用
-const btnImgSayFile = ref(null)
 
 const getSayListFunc = () => {
     let load = layer.load(0)
@@ -3049,7 +3379,6 @@ const getSayListFunc = () => {
             let _data = JSON.parse(Decrypt(res.result, appStore.token))
             // console.log(_data)
             sayList.value = _data.list
-
             layer.close(load)
         })
         .catch((err) => {
@@ -3062,6 +3391,8 @@ const getSayListFunc = () => {
 const sayModelValue = reactive({
     cont: '',
     id: '',
+    type: 0,
+    state: 1,
 })
 const addSayFunc = (_type) => {
     if (sayModelValue.cont == '') {
@@ -3069,7 +3400,7 @@ const addSayFunc = (_type) => {
     }
 
     let load = layer.load(0)
-    addSay({ type: _type, msg: Encrypt(sayModelValue.cont, appStore.token) })
+    addSay({ type: _type, msg: Encrypt(sayModelValue.cont, appStore.token), state: sayModelValue.state })
         .then((res) => {
             if (res.code != 0) {
                 layer.close(load)
@@ -3090,66 +3421,39 @@ const addSayFunc = (_type) => {
 
 //新建图片打招呼
 const addSayImgClick = () => {
-    btnImgSayFile.value.click()
+    $('.alerts').fadeIn()
+    $('.alerts-greetTxt').slideDown()
+    sayModelValue.type = 1
+    sayModelValue.cont = tianjia
+    isSayAdd.value = true
 }
-const uploadImgSay = (e) => {
-    let file = e.target.files[0]
-    let filename = file.name
-    let suffix = get_suffix(filename)
 
-    if (!file) return
-    let load = layer.load(0)
-    let uploadUrl = ''
-    tool.md5(file)
-        .then((md5Res) => {
-            let newFilename = md5Res + suffix
-            upload({ type: 1, name: newFilename })
-                .then((res) => {
-                    e.target.value = ''
-                    if (res.code != 0) {
-                        layer.close(load)
-                        return layer.msg(res.msg)
-                    }
-                    let _data = JSON.parse(Decrypt(res.result, appStore.token))
-                    const { state, property } = _data
-                    if (!state) {
-                        const { accessid, dir, expire, host, policy, signature } = property
-                        let formData = new FormData()
-                        formData.append('OSSAccessKeyId', accessid)
-                        formData.append('signature', signature)
-                        formData.append('policy', policy)
-                        formData.append('key', dir + newFilename)
-                        formData.append('success_action_status', 200)
-                        formData.append('file', file)
+const addSayTxtClick = () => {
+    sayModelValue.type = 0
+    isSayAdd.value = true
+    sayModelValue.cont = ''
+}
 
-                        uploadAliOss(host, formData)
-                            .then((res) => {
-                                uploadUrl = `${host}/${dir}/${newFilename}`
-                            })
-                            .catch((err) => {
-                                layer.msg('上传失败=>' + err.message)
-                            })
-                    } else {
-                        const { url } = _data
+// 新建录音打招呼
+const addSayAudioClick = () => {
+    $('.alerts').fadeIn()
+    $('.alerts-greetTxt').slideDown()
+    sayModelValue.type = 2
+    sayModelValue.cont = ''
+    isSayAdd.value = true
+}
 
-                        uploadUrl = url
-                    }
+const sayAudioFileRef = ref(null)
+const sayUploadAudio = () => {
+    sayAudioFileRef.value.click()
+}
+const sayAudioUpload = async (e) => {
+    sayModelValue.cont = await uploadFile(e, 1)
+}
 
-                    // 调用新建群发接口
-                    sayModelValue.cont = Encrypt(uploadUrl, appStore.token)
-                    addSayFunc(1)
-                    layer.close(load)
-                    layer.msg('新建图片群发成功')
-                })
-                .catch((err) => {
-                    layer.close(load)
-                    layer.msg(err.message)
-                })
-        })
-        .catch((err) => {
-            layer.close(load)
-            layer.msg(err.message)
-        })
+//编辑模式上传图片
+const sayImgUpload = async (e) => {
+    sayModelValue.cont = await uploadFile(e, 2)
 }
 
 // 编辑打招呼
@@ -3161,28 +3465,37 @@ const sayEdit = (item) => {
     isSayAdd.value = false
     sayModelValue.cont = item.c_cont
     sayModelValue.id = item.id
+    sayModelValue.type = item.c_type
+    sayModelValue.state = item.c_state
 }
+
+const sayImgFile = ref(null)
+const sayUploadImg = () => {
+    sayImgFile.value.click()
+}
+
 const editSayFunc = () => {
     let load = layer.load(0)
     let msg = Encrypt(sayModelValue.cont, appStore.token)
-    setSay({ id: sayModelValue.id, msg })
+    setSay({ id: sayModelValue.id, msg, c_state: sayModelValue.state })
         .then((res) => {
             if (res.code != 0) {
                 layer.close(load)
                 return layer.msg(res.msg)
             }
             // 查找到更新的数据然后修改
-            let tmp = {}
+            // let tmp = {}
             sayList.value.forEach((element) => {
                 if (element.id == sayModelValue.id) {
-                    tmp = element
-                    tmp.c_cont = sayModelValue.cont
+                    // tmp = element
+                    element.c_cont = sayModelValue.cont
+                    element.c_state = sayModelValue.state
                     return
                 }
             })
             sayModelValue.cont = ''
             sayModelValue.id = ''
-            sayModelValue.cont = ''
+            sayModelValue.state = 1
             $('.alerts').fadeOut()
             $('.alert-greetTxt').slideUp()
             layer.msg('操作成功')
@@ -3312,8 +3625,9 @@ const isFastAdd = ref(true)
 const fastModelValue = reactive({
     id: '',
     msg: '',
+    type: 0,
 })
-const btnImgFastFile = ref(null)
+
 // 取快捷回复列表
 const getFastListFunc = () => {
     let load = layer.load(0)
@@ -3334,6 +3648,13 @@ const getFastListFunc = () => {
             layer.close(load)
         })
 }
+
+const addFastTxtClick = () => {
+    fastModelValue.type = 0
+    isFastAdd.value = true
+    fastModelValue.msg = ''
+}
+
 //新增快捷回复
 const addFastFunc = (_type) => {
     if (fastModelValue.msg == '') {
@@ -3350,7 +3671,7 @@ const addFastFunc = (_type) => {
             layer.close(load)
             layer.msg('新建11成功')
             $('.alerts').fadeOut()
-            $('.alert-fastTxt').slideUp()
+            $('.alerts-fastTxt').slideUp()
             fastModelValue.msg = ''
             getFastListFunc()
         })
@@ -3362,70 +3683,43 @@ const addFastFunc = (_type) => {
 
 // 新增图片快捷回复
 const addFastImgClick = () => {
-    btnImgFastFile.value.click()
+    $('.alerts').fadeIn()
+    $('.alerts-fastTxt').slideDown()
+    fastModelValue.type = 1
+    fastModelValue.msg = tianjia
+    isFastAdd.value = true
 }
-const uploadImgFast = (e) => {
-    let file = e.target.files[0]
-    let filename = file.name
-    let suffix = get_suffix(filename)
 
-    if (!file) return
-    let load = layer.load(0)
-    let uploadUrl = ''
-    tool.md5(file)
-        .then((md5Res) => {
-            let newFilename = md5Res + suffix
-            upload({ type: 1, name: newFilename })
-                .then((res) => {
-                    e.target.value = ''
-                    if (res.code != 0) {
-                        layer.close(load)
-                        return layer.msg(res.msg)
-                    }
-                    let _data = JSON.parse(Decrypt(res.result, appStore.token))
-                    const { state, property } = _data
-                    if (!state) {
-                        const { accessid, dir, expire, host, policy, signature } = property
-                        let formData = new FormData()
-                        formData.append('OSSAccessKeyId', accessid)
-                        formData.append('signature', signature)
-                        formData.append('policy', policy)
-                        formData.append('key', dir + newFilename)
-                        formData.append('success_action_status', 200)
-                        formData.append('file', file)
+const fastImgFile = ref(null)
+const fastUploadImg = () => {
+    fastImgFile.value.click()
+}
 
-                        uploadAliOss(host, formData)
-                            .then((res) => {
-                                uploadUrl = `${host}/${dir}/${newFilename}`
-                            })
-                            .catch((err) => {
-                                layer.msg('上传失败=>' + err.message)
-                            })
-                    } else {
-                        const { url } = _data
+const fastImgUpload = async (e) => {
+    const uploadUrl = await uploadFile(e, 1)
+    fastModelValue.msg = uploadUrl
+}
 
-                        uploadUrl = url
-                    }
+// 新增录音快捷回复
+const addFastAudioClick = () => {
+    $('.alerts').fadeIn()
+    $('.alerts-fastTxt').slideDown()
+    fastModelValue.type = 2
+    fastModelValue.msg = ''
+    isFastAdd.value = true
+}
 
-                    // 调用新建群发接口
-                    fastModelValue.msg = Encrypt(uploadUrl, appStore.token)
-                    addFastFunc(1)
-                    layer.close(load)
-                    layer.msg('新建成功')
-                })
-                .catch((err) => {
-                    layer.close(load)
-                    layer.msg(err.message)
-                })
-        })
-        .catch((err) => {
-            layer.close(load)
-            layer.msg(err.message)
-        })
+const fastAudioFileRef = ref(null)
+const fastUploadAudio = () => {
+    fastAudioFileRef.value.click()
+}
+const fastAudioUpload = async (e) => {
+    fastModelValue.msg = await uploadFile(e, 1)
 }
 
 // 编辑快捷回复
 const fastEdit = (item) => {
+    // console.log(item)
     $('.btn-slide').fadeOut()
     if (item.id == 0) {
         return layer.msg('请选择需要修改的快捷回复')
@@ -3433,6 +3727,7 @@ const fastEdit = (item) => {
     isFastAdd.value = false
     fastModelValue.msg = item.c_cont
     fastModelValue.id = item.id
+    fastModelValue.type = item.c_type
 }
 //
 const editFastFunc = () => {
@@ -3577,7 +3872,14 @@ const fastDel = (item) => {
 
 // 点击聊天窗口快捷短语
 const fastItemClick = (item) => {
-    send_msg_cont.value = item.c_cont
+    if (item.c_type == 0) {
+        send_msg_cont.value = item.c_cont
+    } else if (item.c_type == 1) {
+        send_msg_cont.value = `[pic=${item.c_cont}]`
+    } else if (item.c_type == 2) {
+        send_msg_cont.value = `[Voi=${item.c_cont}]`
+    }
+    sendMsgClick()
 }
 
 /********************** 快捷回复操作结束 *************/
@@ -3587,6 +3889,7 @@ const quaList = ref([])
 const isQuaAdd = ref(true)
 const quaModelValue = reactive({
     id: '',
+    type: 0,
     q: '',
     a: '',
 })
@@ -3610,6 +3913,33 @@ const getQualistFunc = () => {
             layer.msg(err.message)
             layer.close(load)
         })
+}
+
+// 新建智能问答按钮被点击
+const addNewQuaClick = () => {
+    isQuaAdd.value = true
+    quaModelValue.id = ''
+    quaModelValue.type = 0
+    quaModelValue.q = ''
+    quaModelValue.a = ''
+}
+
+// 新建录音智能问答
+const quaAudioFileRef = ref(null)
+const quaAudioUploadClick = () => {
+    quaAudioFileRef.value.click()
+}
+const quaAudioUploadChange = async (e) => {
+    quaModelValue.a = await uploadFile(e, 1)
+}
+
+// 新建图片智能问答
+const quaImgFileRef = ref(null)
+const quaImgUploadClick = () => {
+    quaImgFileRef.value.click()
+}
+const quaImgUploadChange = async (e) => {
+    quaModelValue.a = await uploadFile(e, 2)
 }
 
 const addQuaFunc = (_type) => {
@@ -3645,6 +3975,7 @@ const quaEdit = (item) => {
         return layer.msg('请选择需要问答')
     }
     isQuaAdd.value = false
+    quaModelValue.type = item.c_type
     quaModelValue.q = item.c_q
     quaModelValue.a = item.c_a
     quaModelValue.id = item.id
@@ -3823,7 +4154,11 @@ const getStatiFunc = () => {
 /********************** 群聊操作开始 *************/
 
 // 计算是否是群组
-const isGroupValue = computed(() => {
+const isRightGroupValue = computed(() => {
+    return rightMenuUserModel.value.c_type == 1
+})
+
+const isSelectGroupValue = computed(() => {
     return selectUser.c_type == 1
 })
 
@@ -3831,18 +4166,25 @@ const isGroupAdd = ref(true)
 const groupModel = reactive({
     nick: '', //群名称
     pic: getImageUrl('img/shuxing-img.png'), //群头像
-    announ: '', //群公告
+    annou: '', //群公告
     banned: 1,
     mid: '',
 })
+const clearGroupModel = () => {
+    groupModel.nick = ''
+    groupModel.pic = getImageUrl('img/shuxing-img.png')
+    groupModel.annou = ''
+    groupModel.banned = 0
+    groupModel.mid = ''
+}
 
 // 新增群组
 const addGroupFunc = (state) => {
     let load = layer.load(0)
     let obj = {
         nick: Encrypt(groupModel.nick, appStore.token),
-        pic: '',
-        announ: Encrypt(groupModel.announ, appStore.token),
+        pic: groupModel.pic,
+        announ: Encrypt(groupModel.annou, appStore.token),
         banned: groupModel.banned,
     }
     addGroup(obj)
@@ -3851,9 +4193,13 @@ const addGroupFunc = (state) => {
                 layer.close(load)
                 return layer.msg(res.msg)
             }
-            getSessListFunc()
+            let _data = JSON.parse(Decrypt(res.result, appStore.token))
+            console.log(_data)
+            sessList.list.unshift(_data)
             layer.close(load)
             layer.msg(res.msg)
+            $('.alerts').fadeOut()
+            $('.alerts-groupTxt').slideUp()
         })
         .catch((err) => {
             layer.close(load)
@@ -3874,17 +4220,27 @@ const groupImgFileChange = async (e) => {
     }
 }
 
-
-
 // 点击编辑群聊点击事件
-const editGroup = () => {
+const editGroup = (_t) => {
     isGroupAdd.value = false
     $('.alerts').fadeIn()
     $('.alerts-groupTxt').slideDown()
-    // 这里获取右键选中的用户的信息 赋值给groupModel
-    groupModel.mid = rightMenuUserModel.value.c_identity
-    groupModel.nick = rightMenuUserModel.value.c_nick
-    groupModel.pic = rightMenuUserModel.value.c_pic
+
+    if (_t === 100) {
+        groupModel.mid = selectUser.c_identity
+        groupModel.nick = selectUser.c_nick
+        groupModel.pic = selectUser.c_pic
+        groupModel.banned = selectUser.c_banned
+        groupModel.annou = selectUser.c_annou
+    } else {
+        // 这里获取右键选中的用户的信息 赋值给groupModel
+        groupModel.mid = rightMenuUserModel.value.c_identity
+        groupModel.nick = rightMenuUserModel.value.c_nick
+        groupModel.pic = rightMenuUserModel.value.c_pic
+        groupModel.annou = rightMenuUserModel.value.c_annou
+        groupModel.banned = rightMenuUserModel.value.c_banned
+        // console.log(rightMenuUserModel.value)
+    }
 }
 
 // 点击编辑群聊处理函数
@@ -3894,7 +4250,7 @@ const editGroupFunc = () => {
         mid: groupModel.mid,
         nick: Encrypt(groupModel.nick, appStore.token),
         pic: groupModel.pic,
-        announ: groupModel.announ,
+        announ: Encrypt(groupModel.annou, appStore.token),
         banned: groupModel.banned,
     }
     setGroup(obj)
@@ -3903,11 +4259,11 @@ const editGroupFunc = () => {
                 layer.close(load)
                 return layer.msg(res.msg)
             }
+            selectUser.c_annou = groupModel.annou
             layer.msg(res.msg)
             layer.close(load)
             $('.alerts').fadeOut()
             $('.alerts-groupTxt').slideUp()
-            getSessListFunc()
         })
         .catch((err) => {
             layer.msg(err.message)
@@ -3933,19 +4289,44 @@ const getGroupListFunc = () => {
             }
             let _data = JSON.parse(Decrypt(res.result, appStore.token))
             // console.log(_data)
-            groupList.value = _data.list
+            const { list, page } = _data
+            if (getGroupListQuery.page > page) {
+                getGroupListQuery.page = page
+                return
+            }
+
+            if (getGroupListQuery.page == 1) {
+                groupList.value = _data.list
+            } else {
+                groupList.value = [...groupList.value, ...list]
+            }
+
             layer.close(load)
         })
         .catch((err) => {
             layer.close(load)
             layer.msg(err.message)
         })
+        .finally(() => {
+            layer.close(load)
+        })
+}
+
+// 群成员翻页
+const groupMemberSCrollHandler = (e) => {
+    let el = e.currentTarget
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight) {
+        getGroupListQuery.page++
+        getGroupListFunc()
+    }
 }
 
 // 查看群成员按钮单击事件
 const openGroupMemberListBtnCLick = () => {
     $('.alert').fadeIn()
     $('.alert-groupMemberlist').animate({ right: -1 + 'px' }, 300)
+    groupList.value = {}
+    getGroupListQuery.page = 1
     getGroupListFunc()
 }
 
@@ -3957,7 +4338,9 @@ const groupQrCodeClick = () => {
     getGroupCodeFunc()
 }
 const groupQrCodeImg = computed(() => {
-    return groupQrCode.value.code?.length > 0 ? 'data:image/jpeg;base64,' + QrState.code : ''
+    // console.log(groupQrCode.value.code)
+    return groupQrCode.value.code?.length > 0 ? 'data:image/jpeg;base64,' + groupQrCode.value.code : ''
+    // return 'data:image/jpeg;base64,' + groupQrCode.value.code
 })
 
 // 取群聊二维码
@@ -3973,8 +4356,9 @@ const getGroupCodeFunc = () => {
                 return layer.msg(res.msg)
             }
             let _data = JSON.parse(Decrypt(res.result, appStore.token))
+            // console.log(_data)
             groupQrCode.value = _data
-
+            // console.log(groupQrCode.value)
             layer.close(load)
         })
         .catch((err) => {
@@ -4058,6 +4442,7 @@ const bannedGroupMemberClick = (item) => {
                 qmid: item.c_qmid,
                 time: value,
             }
+            console.log(params)
             setBanned(params)
                 .then((res) => {
                     if (res.code != 0) {
@@ -4078,10 +4463,34 @@ const bannedGroupMemberClick = (item) => {
     )
 }
 
-
 // 群禁言调用
-const groupBannedSwitch = e =>{
+const groupBannedSwitch = (e) => {
     console.log(e)
+    let params = {
+        mid: selectUser.c_identity,
+        banned: e ? 1 : 0,
+    }
+    let load = layer.load(0)
+    setGroup(params)
+        .then((res) => {
+            if (res.code != 0) {
+                return layer.msg(res.msg)
+            }
+            sessList.list.forEach((v) => {
+                if (v.c_identity == selectUser.c_identity) {
+                    v.c_banned = e ? 1 : 0
+                    return
+                }
+            })
+            selectUser.c_banned = e ? 1 : 0
+            layer.msg('修改成功')
+        })
+        .catch((err) => {
+            layer.msg(err.message)
+        })
+        .finally(() => {
+            layer.close(load)
+        })
 }
 
 // 移除群聊成员
@@ -4175,9 +4584,6 @@ const timeInterval = (t1, t2) => {
     return diff > 5 * 60
 }
 
-import send from '@/assets/sound/send.wav'
-import S7501 from '@/assets/sound/7501.wav'
-import smessage from '@/assets/sound/message.wav'
 // 播放音效
 const audioRef = ref(null)
 const playSound = (so) => {
@@ -4194,6 +4600,47 @@ const playSound = (so) => {
     }
 
     audioRef.value.play()
+}
+
+// 退出登陆
+const logout = () => {
+    console.log
+    if (reconnectTimer.value > 0) {
+        clearInterval(reconnectTimer.value)
+        reconnectTimer.value = 0
+    }
+    appStore.clearToken()
+    router.push('/login')
+}
+
+// 卡密续费
+const renewalClick = () => {
+    layer.prompt(
+        {
+            title: '续费',
+            value: '',
+        },
+        (value, index, elem) => {
+            let params = {
+                card: kefuState.c_user,
+                cardx: value,
+            }
+            renewal(params)
+                .then((res) => {
+                    if (res.code != 0) {
+                        layer.close(index)
+                        return layer.msg(res.msg)
+                    }
+                    layer.msg(res.msg)
+                    layer.close(index)
+                })
+                .catch((err) => {
+                    layer.msg(err.message)
+                    layer.close(index)
+                })
+            layer.close(index)
+        }
+    )
 }
 
 // 原生js代码
@@ -4316,7 +4763,8 @@ $(function () {
     }
 
     $('.containers .dialogue .reply .textarea textarea').keypress(function (e) {
-        //设置快捷键发送
+        // console.log(e)
+        // //设置快捷键发送
         // var key = e.which;
         // if (key == 10) {
         //     down = 0;
@@ -4324,7 +4772,7 @@ $(function () {
         //     $(this).val(txt + '\n')
         // }
         // if (key == 13) {
-        //     down = 1;
+        //     sendMsgClick()
         // }
     })
     $('i.btn-mess').click(function () {
@@ -4369,11 +4817,22 @@ $(function () {
         $('.alert').fadeIn()
         $('.alert-code').slideDown()
     })
+
+    $('.btn-code-sp').click(function () {
+        $('.alert').fadeIn()
+        $('.alert-code-sp').slideDown()
+    })
+
     $('.alert .alert-code .closes').click(function () {
         $('.alert').fadeOut()
         $('.alert-code').slideUp()
     })
+    $('.alert .alert-code-sp .closes').click(function () {
+        $('.alert').fadeOut()
+        $('.alert-code-sp').slideUp()
+    })
     $('.btn-receive').click(function () {
+        getRecepListQuery.page = 1
         $('.alert').fadeIn()
         $('.alert-receive').animate({ right: -1 + 'px' }, 300)
     })
@@ -4384,9 +4843,11 @@ $(function () {
         $('.alert-group-code').slideUp()
         $('.alert-content').animate({ right: -501 + 'px' }, 300)
         rightMenuUser.value = ''
-        rightMenuUserModel.value = {}
+        // rightMenuUserModel.value = {}
     })
     $('.btn-blacklist').click(function () {
+        blackList.value = {}
+        getBlackListQuery.page = 1
         $('.alert').fadeIn()
         $('.alert-blacklist').animate({ right: -1 + 'px' }, 300)
     })
@@ -4497,9 +4958,6 @@ $(function () {
         $(this).parents('li').remove()
     })
 
-    $('body').on('click', '.userTabs ul li', function () {
-        $('.containers-fr').addClass('onChat')
-    })
     // $('.userTabs ul li').click(function () {
     //   $('.containers-fr').addClass('onChat')
     // })
@@ -4510,7 +4968,7 @@ $(function () {
     })
 
     document.oncontextmenu = function () {
-        return false
+        //return false
     }
     // $('.userCont').on('mousedown', function (e) {
     //   var key = e.which //获取鼠标键位
@@ -4528,6 +4986,11 @@ $(function () {
 
 // 新增的js
 function addFunc() {
+    // 会话列表被单击
+    $('body').on('click', '.userTabs ul li', function () {
+        $('.containers-fr').addClass('onChat')
+    })
+
     // //点击任意部位隐藏
     $(document).on('click', function () {
         isShowRightMenu.value = false
@@ -4569,11 +5032,8 @@ function addFunc() {
     $('.bq-conts ul li').off('click')
     $('.bq-conts ul li').click(function () {
         //选择表情
-        var s = $(this).find('img').attr('src')
-        let idx = s.indexOf('/assets/img/bq/')
-        s = s.substr(idx + 15)
-        var m = s.replace(/.gif/, '')
-        send_msg_cont.value += '[face=' + m + ']'
+        var s = $(this).find('img').attr('data-src')
+        send_msg_cont.value += '[face=' + s + ']'
         $('.slide-bq').fadeOut()
     })
 
@@ -4582,18 +5042,33 @@ function addFunc() {
         $('.alert').fadeOut()
         $('.alert-group-code').slideUp()
     })
+
+    // 聊天页面点击加号添加 文本回复
+    $('.btn-adds').click(function () {
+        isFastAdd.value = true
+        $('.alerts').fadeIn()
+        $('.alerts-fastTxt').slideDown()
+    })
+
+    // 快捷键事件
+    $('.textarea textarea').keypress(function (e) {
+        const key = e.which
+        if (key == 13) {
+            sendMsgClick()
+        }
+    })
 }
 </script>
 
 <style scoped>
 /* 引入css */
-@import '../assets/css/style.css';
-@import '../assets/css/css.css';
-@import '../assets/css/Swiper.css';
-@import '../assets/css/iconfont.css';
-@import '../assets/css/bootstrap.min.css';
-@import '../assets/css/bootstrap-theme.min.css';
-@import '../assets/css/animate.min.css';
+/* @import '../assets/css/style.css'; */
+/* @import '../assets/css/css.css'; */
+/* @import '../assets/css/Swiper.css'; */
+/* @import '../assets/css/iconfont.css'; */
+/* @import '../assets/css/bootstrap.min.css'; */
+/* @import '../assets/css/bootstrap-theme.min.css'; */
+/* @import '../assets/css/animate.min.css'; */
 
 .containers .userList .userCont .dialogue ul li.active {
     background-color: #eff0f1;
@@ -4660,6 +5135,7 @@ function addFunc() {
 .group-img {
     width: 100px;
     height: 100px;
+    margin-bottom: 10px;
 }
 
 .dpno {
@@ -4878,6 +5354,131 @@ function addFunc() {
     padding-top: 8px;
 }
 .alert .alert-group-code .conts .text p {
+    line-height: 22px;
+    font-size: 14px;
+    color: #ea4141;
+}
+.line-limit {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 300px !important;
+}
+
+/* 自动换行 */
+.auto-warp {
+    word-wrap: break-word;
+    word-break: normal;
+}
+.btn-flex-start {
+    justify-content: flex-start !important;
+    /* 元素间距 */
+    gap: 10px;
+}
+
+.btnMore {
+    /* background: #e9eef2; */
+    background: #fff;
+    position: absolute;
+    z-index: 9999;
+    left: 72px;
+    border-radius: 6px;
+}
+.btnMore ul {
+    display: block;
+}
+.btnMore ul li {
+    width: 80px !important;
+    height: 30px !important;
+    border-radius: 6px;
+    padding: 5px 10px;
+    color: #409eff;
+    font-size: 14px;
+}
+.btnMore ul li:hover {
+    /* margin-top: 5px; */
+    background-color: #e9eef2;
+}
+
+/*  录音功能 */
+.dialogRecoder {
+    text-align: center;
+}
+.btn-microphone {
+    background: url(/src/assets/img/MICROPHONE.png) center no-repeat;
+    background-size: 24px 24px;
+}
+
+/* 专属二维码 */
+.alert .alert-code-sp {
+    width: 500px;
+    height: 720px;
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 18px;
+    position: absolute;
+    left: 50%;
+    margin-left: -250px;
+    top: 50%;
+    margin-top: -360px;
+    display: none;
+}
+.alert .alert-code-sp .closes {
+    width: 40px;
+    height: 40px;
+    background: url('../img/18c7e2_13x12.jpg') center no-repeat;
+    position: absolute;
+    right: 20px;
+    cursor: pointer;
+    top: 24px;
+}
+.alert .alert-code-sp .title {
+    width: 100%;
+    height: 50px;
+    line-height: 50px;
+    font-size: 18px;
+}
+.alert .alert-code-sp .conts {
+    width: 100%;
+    padding-top: 20px;
+}
+.alert .alert-code-sp .conts .links {
+    width: 100%;
+    text-align: center;
+    font-size: 14px;
+    color: #555;
+    line-height: 28px;
+}
+.alert .alert-code-sp .conts .imgs {
+    width: 100%;
+    padding: 20px 0;
+    text-align: center;
+}
+.alert .alert-code-sp .conts .imgs img {
+    width: 80%;
+    max-width: 300px;
+}
+.alert .alert-code-sp .conts .button {
+    width: 100%;
+    padding: 12px 0;
+    display: flex;
+    justify-content: space-between;
+}
+.alert .alert-code-sp .conts .button button {
+    width: 140px;
+    height: 40px;
+    background-color: #409eff;
+    border-radius: 4px;
+    text-align: center;
+    line-height: 40px;
+    color: #fff;
+    font-size: 14px;
+}
+.alert .alert-code-sp .conts .text {
+    width: 100%;
+    padding-top: 8px;
+}
+.alert .alert-code-sp .conts .text p {
     line-height: 22px;
     font-size: 14px;
     color: #ea4141;

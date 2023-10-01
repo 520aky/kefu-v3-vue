@@ -1,5 +1,4 @@
 <script setup>
-import TheWelcome from '../components/TheWelcome.vue'
 
 import {layer} from 'vue3-layer'
 import { onMounted } from 'vue'
@@ -12,6 +11,8 @@ onMounted(()=>{
 
 <template>
   <main>
-    <TheWelcome />
+    <el-button type="primary">
+      摩羯阿婆
+    </el-button>
   </main>
 </template>

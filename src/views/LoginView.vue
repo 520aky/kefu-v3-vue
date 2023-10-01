@@ -29,25 +29,24 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { layer } from 'vue3-layer'
 import { login, renewal } from '@/api/login'
 import { useAppStore } from '@/stores/app'
 const appStore = useAppStore()
-const curIndex = ref(0)
 
-const  groupModel = reactive({
-  banned: 'Male'
-})
 
 import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const data = reactive({
-  CardPass: 'AJ-74155493FE3EA9E8',
+  CardPass: '',
   Cardx: '',
 })
 
+
+
+const curIndex = ref(0)
 const subMit = () => {
   if (curIndex.value == 0) {
     //登陆
@@ -57,7 +56,6 @@ const subMit = () => {
     let load = layer.load(0)
     try {
       login({ card: data.CardPass }).then((res) => {
-        console.log(res)
         if (res.code != 0) {
           return layer.msg(res.msg)
         }

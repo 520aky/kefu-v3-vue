@@ -3,6 +3,7 @@ import Base64 from 'crypto-js/enc-base64'
 import md5 from 'crypto-js/md5'
 
 export function Decrypt(word, aeskey){
+    // console.log(word, aeskey)
     let key = CryptoJS.enc.Utf8.parse(aeskey?.substring(0, 16));
     let decrypt = CryptoJS.AES.decrypt(word, key,
         {

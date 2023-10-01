@@ -81,7 +81,7 @@ export function delChat(params) {
 
 /**
  * 清空聊天记录
- * @param {*} params  mid:   type=类型(0=删除指定，需要提供[mid]参数 1=删除3天前  2=删除5天前 3=删除全部)
+ * @param {*} params  mid:对方MID(如果type大于0可以不提供本参数)   type=类型(0=删除指定，需要提供[mid]参数 1=删除3天前  2=删除5天前 3=删除全部)
  * @returns
  */
 export function delSession(params) {
@@ -121,6 +121,7 @@ export function read(params) {
 //
 /**
  * 取私聊二维码
+ * @param {*} params special=类型(专属二维码提供true，留空就是普通二维码)
  * @returns
  */
 export function getSessCode(params) {
@@ -135,6 +136,7 @@ export function getSessCode(params) {
  * 操作二维码
  * @returns
  * @param {*} params  type=类型(0=失效当前二维码  1=重新生成二维码)
+ * @param {*} params  special=类型(专属二维码提供true，留空就是普通二维码)
  */
 export function setSessCode(params) {
   return request({
@@ -743,6 +745,11 @@ export function delGroupMember(params) {
     params,
   })
 }
+
+
+
+
+
 
 
 
